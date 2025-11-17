@@ -22,12 +22,18 @@ class CharacterAgent:
         Args:
             character_info: 캐릭터 정보 딕셔너리
                 - name: 이름
-                - role: 역할
+                - age: 나이 (선택)
+                - job: 직업 (선택)
                 - personality: 성격
                 - prompt: 시스템 프롬프트
         """
+        # 전체 정보 저장
+        self.character_info = character_info
+
+        # 자주 쓰는 정보는 속성으로
         self.name = character_info["name"]
-        self.role = character_info["role"]
+        self.age = character_info.get("age", None)
+        self.job = character_info.get("job", character_info.get("role", ""))
         self.personality = character_info["personality"]
         self.system_prompt = character_info["prompt"]
 

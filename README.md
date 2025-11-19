@@ -1,19 +1,22 @@
 # 🕵️ 마피아 추리 게임
 
-AI 에이전트를 활용한 텍스트 기반 추리 게임
+**LangGraph 기반 멀티 에이전트 AI 추리 게임**
 
 ## 🎮 게임 소개
 
 5명의 개성있는 AI 캐릭터 중 1명이 범인(마피아)입니다!
 AI들과 자유롭게 대화하며 단서를 찾고, 누가 범인인지 추리하세요.
 
-### 특징
-- 🎭 **5명의 다양한 캐릭터**: 대학생, 회사원, 예술가, 셰프, 은퇴 교사
-- 🎲 **무작위 범인 선정**: 매번 다른 사람이 범인
-- 💬 **자유로운 대화**: 특정 캐릭터와 1:1 대화 또는 전체 대화
-- 🔍 **추리 게임**: 대화 속에서 단서를 찾아 범인 찾기
+### ✨ 특징
+- 🎭 **5명의 다양한 캐릭터**: 각자 고유한 성격, 직업, 말투
+- 🎲 **무작위 범인 선정**: 매 게임마다 다른 범인
+- 💬 **자유로운 대화**: AI와 자연스러운 대화
+- 🔍 **추리 게임**: 대화 속 단서로 범인 찾기
+- 🔥 **LangGraph + LangSmith**: 최신 멀티 에이전트 시스템
 
-## 🚀 실행 방법
+---
+
+## 🚀 빠른 시작
 
 ### 1. 패키지 설치
 ```bash
@@ -21,48 +24,27 @@ pip install -r requirements.txt
 ```
 
 ### 2. 환경 변수 설정
-`.env` 파일에 Google API 키가 있는지 확인
+`.env` 파일에 API 키 설정:
+```env
+GOOGLE_API_KEY=your-google-api-key
+```
 
 ### 3. 게임 시작!
 ```bash
-python play_game.py
+python play_game_langgraph.py
 ```
+
+---
 
 ## 🎯 게임 진행 방법
 
 1. **게임 시작**: 5명의 캐릭터 소개
-2. **AI 대화 관찰**: AI들끼리 대화하는 것을 보며 분위기 파악
-3. **질문하기**: 의심스러운 사람에게 질문
-4. **단서 수집**: 대화 속 이상한 점 찾기
-5. **범인 투표**: 범인이라고 생각하는 사람 지목
+2. **AI 대화 관찰**: AI들끼리 대화하며 분위기 파악
+3. **질문하기**: 모두에게 질문 던지기
+4. **단서 수집**: 이상한 점 찾기
+5. **범인 투표**: 범인이라 생각하는 사람 지목
 
-## 📁 프로젝트 구조
-
-```
-mafia_agent/
-├── play_game.py              # 🎮 게임 실행 파일 (메인)
-├── test_new_characters.py    # 캐릭터 시스템 테스트
-├── phase2_demo.py            # AI 대화 데모
-├── main.py                   # Phase 1 데모
-│
-├── game/
-│   ├── mafia_game.py         # 게임 관리 (캐릭터 생성, 범인 선정)
-│   └── gameplay_manager.py   # 게임플레이 (대화, 투표)
-│
-├── agents/
-│   ├── character_agent.py    # AI 캐릭터 엔진
-│   └── conversation_manager.py  # AI 대화 관리
-│
-├── characters/               # 캐릭터 정의
-│   ├── student.py           # 김민지 (대학생)
-│   ├── office_worker.py     # 박준호 (회사원)
-│   ├── artist.py            # 최수아 (예술가)
-│   ├── chef.py              # 이성민 (셰프)
-│   └── teacher.py           # 한영희 (교사)
-│
-├── CHARACTERS.md            # 캐릭터 상세 설명
-└── README.md               # 이 파일
-```
+---
 
 ## 👥 등장 캐릭터
 
@@ -70,11 +52,88 @@ mafia_agent/
 |------|------|------|------|
 | 김민지 | 22세 | 대학생 | 활발, 감정적, 호기심 많음 |
 | 박준호 | 32세 | 회사원 | 침착, 논리적, 신중함 |
-| 최수아 | 28세 | 일러스트레이터 | 감성적, 직관적, 관찰력 좋음 |
+| 최수아 | 28세 | 일러스트레이터 | 감성적, 직관적, 관찰력 |
 | 이성민 | 35세 | 셰프 | 유쾌, 솔직, 다혈질 |
 | 한영희 | 63세 | 은퇴 교사 | 지혜로움, 온화함, 경험 많음 |
 
-자세한 설명은 [CHARACTERS.md](CHARACTERS.md) 참고
+자세한 설명: [CHARACTERS.md](CHARACTERS.md)
+
+---
+
+## 🏗️ 프로젝트 구조
+
+```
+mafia_agent/
+├── 🎮 play_game_langgraph.py   ⭐ LangGraph 메인 게임
+│
+├── 📊 graph/                   LangGraph 시스템
+│   ├── state.py               # GameState 정의
+│   ├── nodes.py               # 기능 노드들
+│   └── workflow.py            # Graph 구성
+│
+├── 🎭 characters/             캐릭터 정의
+│   ├── student.py
+│   ├── office_worker.py
+│   ├── artist.py
+│   ├── chef.py
+│   └── teacher.py
+│
+└── 📚 문서
+    ├── README.md              # 이 파일
+    ├── CHARACTERS.md          # 캐릭터 상세
+    ├── LANGGRAPH_MIGRATION.md # 마이그레이션 가이드
+    └── PROJECT_STRUCTURE.md   # 전체 구조
+```
+
+자세한 구조: [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)
+
+---
+
+## 💡 핵심 기술: LangGraph
+
+### 왜 LangGraph인가?
+
+**기존 방식의 한계:**
+- 수동 상태 관리
+- 복잡한 흐름 제어
+- 디버깅 어려움
+
+**LangGraph 장점:**
+✅ **State 관리**: 모든 에이전트가 하나의 State 공유
+✅ **명확한 흐름**: Graph로 게임 로직 시각화
+✅ **조건부 분기**: 복잡한 로직 쉽게 처리
+✅ **LangSmith 통합**: 실시간 모니터링
+✅ **확장성**: 새로운 기능 추가 용이
+
+### LangGraph 구조
+
+```
+[START]
+   ↓
+setup_game (캐릭터 생성, 범인 선정)
+   ↓
+next_turn (턴 진행)
+   ↓
+[조건부 분기]
+   ├─→ character_speak (AI 발언)
+   ├─→ user_input (유저 입력)
+   ├─→ vote (투표)
+   └─→ [END]
+```
+
+자세한 내용: [LANGGRAPH_MIGRATION.md](LANGGRAPH_MIGRATION.md)
+
+---
+
+## 🔧 기술 스택
+
+- **Python 3.13**
+- **LangChain** - AI 프레임워크
+- **LangGraph** - 멀티 에이전트 오케스트레이션
+- **LangSmith** - 모니터링 (선택)
+- **Google Gemini AI** - 생성형 AI
+
+---
 
 ## 📋 개발 진행 상황
 
@@ -92,47 +151,105 @@ mafia_agent/
 - 유저 참여 대화
 - 투표 시스템
 
-### 🔜 Phase 4: 웹 인터페이스 (예정)
+### ✅ Phase 4: LangGraph 전환
+- State 기반 멀티 에이전트
+- Graph로 게임 흐름 관리
+- LangSmith 통합 준비
+
+### 🔜 Phase 5: 웹 인터페이스 (예정)
 - FastAPI 백엔드
-- React/Vue 프론트엔드
+- React 프론트엔드
 - 실시간 채팅 UI
 
-## 💡 핵심 기술
+---
 
-### LangChain 활용
-- **ChatGoogleGenerativeAI**: Gemini AI 모델 사용
-- **Message System**: 대화 기록 관리
-  - SystemMessage: 캐릭터 성격 정의
-  - HumanMessage: 유저/다른 캐릭터 입력
-  - AIMessage: AI 응답
+## 🎓 학습 튜토리얼
 
-### 게임 시스템
-- **MafiaGame**: 캐릭터 생성 및 범인 선정
-- **GameplayManager**: 대화 흐름 관리
-- **CharacterAgent**: 개별 AI 캐릭터 로직
+### 단계별 학습
+```bash
+# 1단계: 기본 AI 대화
+python main.py
 
-## 🔧 기술 스택
+# 2단계: AI 간 대화
+python phase2_demo.py
 
-- Python 3.13
-- LangChain
-- Google Gemini AI (gemini-2.0-flash)
-- python-dotenv
+# 3단계: 캐릭터 시스템
+python test_new_characters.py
+
+# 4단계: LangGraph 게임
+python play_game_langgraph.py
+
+# 5단계: 그래프 시각화
+python graph/workflow.py
+```
+
+---
+
+## 🔍 LangSmith 모니터링 (선택)
+
+실시간으로 AI 에이전트 동작을 추적하고 디버깅할 수 있습니다.
+
+### 설정
+1. https://smith.langchain.com 에서 계정 생성
+2. API 키 발급
+3. `.env`에 추가:
+```env
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=your-langsmith-key
+LANGCHAIN_PROJECT=mafia-game
+```
+
+### 대시보드에서 확인 가능
+- 각 노드의 입출력
+- 실행 시간
+- 에러 추적
+- 대화 흐름
+
+---
 
 ## 📚 학습 포인트
 
 1. **AI 에이전트 설계**: 성격을 가진 AI 만들기
-2. **멀티 에이전트 시스템**: 여러 AI 간 대화
-3. **프롬프트 엔지니어링**: 자연스러운 대화 유도
-4. **게임 로직**: 턴제 게임 시스템
+2. **멀티 에이전트 시스템**: LangGraph로 여러 AI 조율
+3. **State 관리**: 중앙 집중식 상태 관리
+4. **프롬프트 엔지니어링**: 자연스러운 대화 유도
+5. **Graph 기반 흐름 제어**: 복잡한 로직을 선언적으로 표현
 
-## 🎓 튜토리얼
+---
 
-각 Phase별로 학습하며 진행:
-1. `python main.py` - 기본 AI 대화
-2. `python phase2_demo.py` - AI 간 대화
-3. `python test_new_characters.py` - 캐릭터 테스트
-4. `python play_game.py` - 완전한 게임
+## 🛠️ 개발 가이드
+
+### 새 캐릭터 추가
+1. `characters/new_character.py` 생성
+2. `get_character_info()` 정의
+3. `graph/nodes.py`에서 import
+
+### 새 기능 추가
+1. `graph/nodes.py`에 노드 함수 작성
+2. `graph/workflow.py`에서 그래프에 연결
+
+### 디버깅
+- LangSmith 대시보드 활용
+- `graph/workflow.py` 실행해서 그래프 구조 확인
+
+---
+
+## 📖 관련 문서
+
+- [캐릭터 상세 설명](CHARACTERS.md)
+- [LangGraph 마이그레이션 가이드](LANGGRAPH_MIGRATION.md)
+- [프로젝트 구조 상세](PROJECT_STRUCTURE.md)
+- [LangGraph 공식 문서](https://langchain-ai.github.io/langgraph/)
+- [LangSmith 가이드](https://docs.smith.langchain.com/)
+
+---
 
 ## 🤝 기여
 
-이 프로젝트는 LangChain과 AI 에이전트 학습을 위한 교육용 프로젝트입니다.
+이 프로젝트는 LangChain과 LangGraph를 활용한 멀티 에이전트 시스템 학습을 위한 교육용 프로젝트입니다.
+
+---
+
+## 📝 라이선스
+
+이 프로젝트는 학습 목적으로 만들어졌습니다.

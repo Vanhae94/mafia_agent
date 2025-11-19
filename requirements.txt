@@ -3,4 +3,7 @@ langchain-openai
 langchain-google-genai
 langchain-community
 langchain-core
+langgraph
+langgraph-checkpoint
+langsmith
 python-dotenv

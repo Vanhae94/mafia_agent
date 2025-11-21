@@ -116,10 +116,19 @@ next_turn (턴 진행)
    ↓
 [조건부 분기]
    ├─→ character_speak (AI 발언)
+   ├─→ wait_for_user (사용자 입력 대기 - Interrupt)
+   │         ↓
+   │    (Command로 재개)
+   │         ↓
    ├─→ user_input (유저 입력)
    ├─→ vote (투표)
    └─→ [END]
 ```
+
+**핵심 메커니즘: Interrupt & Resume**
+- **Interrupt**: `wait_for_user` 노드에서 그래프 실행을 일시 중단하고 사용자 입력을 기다립니다.
+- **Resume**: 사용자가 입력을 제공하면 `Command(resume=...)`를 통해 중단된 지점에서 그래프를 재개합니다.
+- 이를 통해 웹 서버나 CLI 환경에서 비동기적인 사용자 상호작용을 완벽하게 지원합니다.
 
 자세한 내용: [LANGGRAPH_MIGRATION.md](LANGGRAPH_MIGRATION.md)
 
@@ -179,7 +188,10 @@ python test_new_characters.py
 # 4단계: LangGraph 게임
 python play_game_langgraph.py
 
-# 5단계: 그래프 시각화
+# 5단계: Interrupt/Resume 테스트
+python test_fix.py
+
+# 6단계: 그래프 시각화
 python graph/workflow.py
 ```
 

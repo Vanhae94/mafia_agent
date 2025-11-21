@@ -4,6 +4,7 @@ LangGraph Workflow 정의
 """
 
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
 from graph.state import GameState
 from graph.nodes import (
     setup_game_node,
@@ -11,7 +12,7 @@ from graph.nodes import (
     user_input_node,
     vote_node,
     next_turn_node,
-    wait_for_user_node
+    wait_for_user_node  # wait_for_user_node 함수 import
 )
 
 
@@ -87,7 +88,7 @@ def create_game_graph():
     # 노드 추가
     workflow.add_node("setup", setup_game_node)
     workflow.add_node("character_speak", character_speak_node)
-    workflow.add_node("wait_user", wait_for_user_node)
+    workflow.add_node("wait_user", wait_for_user_node)  # wait_for_user_node 함수 사용
     workflow.add_node("user_input", user_input_node)
     workflow.add_node("vote", vote_node)
     workflow.add_node("next_turn", next_turn_node)
@@ -95,8 +96,9 @@ def create_game_graph():
     # 시작점: setup
     workflow.set_entry_point("setup")
 
-    # setup 후 character_speak으로 (첫 AI가 말함)
-    workflow.add_edge("setup", "character_speak")
+    # setup 후 바로 wait_user로 (사용자 명령 대기)
+    # 토큰 낭비 방지: 시작하자마자 AI가 말하지 않음
+    workflow.add_edge("setup", "wait_user")
 
     # character_speak 후 next_turn
     workflow.add_edge("character_speak", "next_turn")
@@ -121,34 +123,20 @@ def create_game_graph():
         {
             "user_input": "user_input",  # 일반 대화
             "vote": "vote",              # 투표
-            "wait_user": END             # 입력 대기 (그래프 일시 중단)
+            "wait_user": "wait_user"             # 입력 대기 (그래프 일시 중단)
         }
     )
 
-    # user_input 후 다시 next_turn (새 라운드 시작)
-    workflow.add_edge("user_input", "next_turn")
+    # user_input 후 character_speak으로 (AI 토론 시작)
+    workflow.add_edge("user_input", "character_speak")
 
     # vote 후 종료
     workflow.add_edge("vote", END)
 
-    # 컴파일
-    app = workflow.compile()
+    # 컴파일 - MemorySaver를 checkpointer로 사용
+    # interrupt() 사용 시 checkpointer 필수
+    memory = MemorySaver()
+    app = workflow.compile(checkpointer=memory)
 
     return app
-
-
-# 그래프 시각화용 (선택사항)
-def visualize_graph():
-    """
-    그래프 구조를 시각화 (mermaid 형식)
-    """
-    app = create_game_graph()
-
-    try:
-        # Mermaid 다이어그램 출력
-        print(app.get_graph().draw_mermaid())
-    except Exception as e:
-        print(f"시각화 실패: {e}")
-        print("그래프는 정상적으로 생성되었습니다.")
-
 

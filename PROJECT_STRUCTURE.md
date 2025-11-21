@@ -7,6 +7,8 @@ mafia_agent/
 │
 ├── 🎮 게임 실행 파일
 │   ├── play_game_langgraph.py    ⭐ LangGraph 버전 (메인)
+│   ├── test_fix.py               (Interrupt/Resume 테스트)
+│   ├── check_command.py          (Command 객체 확인)
 │   ├── play_game.py              (레거시)
 │   ├── test_new_characters.py    (테스트용)
 │   ├── phase2_demo.py            (데모)
@@ -100,6 +102,9 @@ GameState = {
 - `user_input_node`: 유저 입력 처리
 - `vote_node`: 투표 처리
 - `next_turn_node`: 턴 진행
+- `wait_for_user_node`: 사용자 입력 대기 (Interrupt 발생)
+  - `interrupt("wait_user")`를 호출하여 그래프 실행을 일시 중단
+  - 재개 시 `Command(resume=...)`로 전달된 값을 반환하여 State 업데이트
 
 ### graph/workflow.py
 **그래프 구성** - 노드를 연결하여 게임 흐름 정의
@@ -110,6 +115,12 @@ setup → next_turn → [조건부 분기]
                       ├─ user_input
                       └─ vote → END
 ```
+
+**Interrupt & Resume 흐름:**
+1. `wait_for_user` 노드에서 `interrupt` 발생 → 그래프 중단 (메모리에 상태 저장)
+2. 사용자가 입력(대화/투표)을 하면 `Command(resume={"user_input": ...})`로 그래프 재개
+3. `wait_for_user` 노드가 재개된 값을 반환 → State 업데이트
+4. 조건부 엣지에 따라 다음 노드(`user_input` 또는 `vote`)로 이동
 
 ---
 

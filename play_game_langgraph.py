@@ -1,5 +1,6 @@
 """
 LangGraph 기반 마피아 게임
+Interrupt + Checkpointer 방식 사용
 """
 
 from graph.workflow import create_game_graph
@@ -32,10 +33,10 @@ def print_menu():
     print("\n" + "=" * 70)
     print("🎮 무엇을 하시겠습니까?")
     print("=" * 70)
-    print("1. AI 대화 1라운드 진행")
-    print("2. 질문하기 (모두에게)")
+    print("1. AI 대화 보기 (AI 3명이 자유롭게 대화)")
+    print("2. 특정 AI와 대화하기")
     print("3. 범인 투표")
-    print("4. 참가자 목록 보기")
+    print("4. 생존자 목록 보기")
     print("5. 게임 종료")
     print("=" * 70)
 
@@ -63,12 +64,32 @@ def main():
     print("\n" + "=" * 70)
     input("\n엔터를 눌러 게임을 시작하세요...")
 
-    # 그래프 생성
+    # 그래프 생성 (checkpointer 포함)
     app = create_game_graph()
 
-    # 초기 상태로 실행 (setup)
+    # Command 객체 임포트 (재개용)
+    from langgraph.types import Command
+
+    # Thread ID - 이 ID로 checkpointer에서 state를 추적
+    thread_id = "mafia_game_session_1"
+    config = {"configurable": {"thread_id": thread_id}}
+
+    # 초기 상태로 실행
+    # setup → wait_user → interrupt 발생 → 그래프 중단
     print("\n🎲 게임 세팅 중...")
-    state = app.invoke({})
+
+    # 첫 실행 - setup부터 시작
+    # 이미 실행된 적이 있는지 확인하기 위해 state를 먼저 가져와 봄
+    current_state = app.get_state(config)
+    if current_state.next:
+        print("🔄 기존 게임 세션을 불러옵니다...")
+        state = current_state.values
+    else:
+        result = app.invoke({}, config)
+        state = result
+
+    # wait_user에서 interrupt 발생했으므로 여기서 멈춤
+    # checkpointer가 현재 state 저장
 
     print(f"\n✅ 게임이 시작되었습니다!")
     print(f"   총 {len(state['characters'])}명의 캐릭터가 참여합니다.")
@@ -76,6 +97,9 @@ def main():
 
     # 캐릭터 목록 보기
     print_characters(state)
+
+    # 현재 메시지 개수 추적 (새 메시지만 출력하기 위해)
+    last_message_count = len(state.get("messages", []))
 
     # 게임 루프
     game_over = False
@@ -86,51 +110,95 @@ def main():
         choice = input("\n선택 (1-5): ").strip()
 
         if choice == "1":
-            # AI 대화 1라운드
+            # AI들끼리 자유롭게 대화
             print("\n" + "=" * 70)
             print("💬 AI 대화 라운드")
             print("=" * 70)
+            print("\n AI들이 자유롭게 대화합니다...")
 
-            # 각 캐릭터가 한 번씩 발언
-            for char in state["characters"]:
-                # 현재 speaker 설정하고 실행
-                state["current_speaker"] = char["name"]
-                state = app.invoke(state)
+            # user_input 주입 후 그래프 재개
+            # wait_user에서 멈춘 지점부터 계속 실행:
+            # wait_user → user_input → character_speak (3번) → wait_user → interrupt
+            result = app.invoke(
+                Command(resume={"user_input": "[AI들끼리 자유롭게 대화를 시작합니다]"}),
+                config
+            )
+            state = result
 
-                # 최신 메시지 출력
-                if state["messages"]:
-                    latest_msg = state["messages"][-1]
-                    print_message(latest_msg)
+            # 새로 추가된 메시지들만 출력
+            messages = state.get("messages", [])
+            new_messages = messages[last_message_count:]
+
+            for msg in new_messages:
+                # 시스템 메시지 (트리거)는 출력 안 함
+                if hasattr(msg, 'name') and msg.name != "유저":
+                    print_message(msg)
+                elif not hasattr(msg, 'name'):
+                    # 시스템 메시지
+                    if "[AI들끼리" not in msg.content:
+                        print_message(msg)
+
+            last_message_count = len(messages)
 
             print("\n" + "=" * 70)
 
         elif choice == "2":
-            # 질문하기
-            question = input("\n모두에게 할 질문: ").strip()
+            # 특정 AI와 대화하기
+            print("\n" + "-" * 70)
+            print("💬 누구와 대화하시겠습니까?")
+            print("-" * 70)
 
-            if question:
-                # user_input 설정
-                state["user_input"] = question
-                state = app.invoke(state)
+            for i, char in enumerate(state["characters"], 1):
+                print(f"{i}. {char['name']} ({char.get('job', '?')})")
 
-                # 모든 캐릭터가 답변
-                for char in state["characters"]:
-                    state["current_speaker"] = char["name"]
-                    state = app.invoke(state)
+            print("-" * 70)
 
-                    # 최신 메시지 출력
-                    if state["messages"]:
-                        latest_msg = state["messages"][-1]
-                        print_message(latest_msg)
+            try:
+                target_num = int(input("\n번호 선택 (1-5): ").strip())
+                if 1 <= target_num <= len(state["characters"]):
+                    target_char = state["characters"][target_num - 1]
+
+                    # 질문 입력
+                    question = input(f"\n{target_char['name']}에게 할 질문: ").strip()
+
+                    if question:
+                        print("\n" + "=" * 70)
+                        print(f"💬 {target_char['name']}와의 대화")
+                        print("=" * 70)
+
+                        # user_input 주입 후 그래프 재개
+                        user_message = f"[{target_char['name']}에게] {question}"
+                        result = app.invoke(
+                            Command(resume={"user_input": user_message}),
+                            config
+                        )
+                        state = result
+
+                        # 새로 추가된 메시지들만 출력
+                        messages = state.get("messages", [])
+                        new_messages = messages[last_message_count:]
+
+                        for msg in new_messages:
+                            print_message(msg)
+
+                        last_message_count = len(messages)
+
+                        print("\n" + "=" * 70)
+                    else:
+                        print("❌ 질문을 입력하세요.")
+                else:
+                    print("❌ 1-5 사이의 숫자를 입력하세요.")
+            except ValueError:
+                print("❌ 숫자를 입력하세요.")
 
         elif choice == "3":
-            # 투표
+            # 범인 투표
             print("\n" + "-" * 70)
             print("🗳️  누가 범인이라고 생각하시나요?")
             print("-" * 70)
 
             for i, char in enumerate(state["characters"], 1):
-                print(f"{i}. {char['name']}")
+                print(f"{i}. {char['name']} ({char.get('job', '?')})")
 
             print("-" * 70)
 
@@ -139,14 +207,22 @@ def main():
                 if 1 <= vote <= len(state["characters"]):
                     selected = state["characters"][vote - 1]
 
-                    # 투표 설정
-                    state["user_target"] = selected["name"]
-                    state = app.invoke(state)
+                    print(f"\n🎯 {selected['name']}을(를) 범인으로 지목합니다...")
+
+                    # user_target 주입 후 그래프 재개
+                    # wait_user → vote → END
+                    result = app.invoke(
+                        Command(resume={"user_target": selected["name"]}),
+                        config
+                    )
+                    state = result
 
                     # 결과 메시지 출력
-                    if state["messages"]:
-                        latest_msg = state["messages"][-1]
-                        print_message(latest_msg)
+                    messages = state.get("messages", [])
+                    new_messages = messages[last_message_count:]
+
+                    for msg in new_messages:
+                        print_message(msg)
 
                     game_over = True
                 else:
@@ -155,13 +231,13 @@ def main():
                 print("❌ 숫자를 입력하세요.")
 
         elif choice == "4":
-            # 참가자 목록
+            # 생존자 목록 (현재는 모두 생존)
             print_characters(state)
 
         elif choice == "5":
             # 게임 종료
-            print(f"\n게임을 종료합니다.")
-            print(f"참고: 범인은 {state['mafia_name']}이었습니다.")
+            print("\n게임을 종료합니다.")
+            print(f"💡 참고: 범인은 '{state['mafia_name']}'이었습니다.")
             game_over = True
 
         else:

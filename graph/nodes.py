@@ -6,6 +6,7 @@ LangGraph Nodes
 from typing import Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langgraph.types import interrupt
 import os
 from dotenv import load_dotenv
 import random
@@ -101,8 +102,15 @@ def character_speak_node(state: Dict[str, Any]) -> Dict[str, Any]:
     recent_messages = state.get("messages", [])[-5:]
     conversation.extend(recent_messages)
 
-    # 프롬프트: 자유롭게 발언하기
-    prompt = "지금까지의 대화 흐름을 보고, 당신의 성격에 맞게 자유롭게 발언하세요. 다른 사람들과 대화하듯이 자연스럽게 말하세요."
+    # 프롬프트: 짧고 간결하게 발언하기
+    prompt = """지금까지의 대화 흐름을 보고, 당신의 성격에 맞게 자연스럽게 한마디 하세요.
+
+**중요 규칙:**
+- 반드시 100자 이내로 짧게 말하세요
+- 일상 대화처럼 자연스럽게
+- 한 번에 한 가지 생각만 표현하세요
+- 불필요한 설명은 생략하세요
+"""
     conversation.append(HumanMessage(content=prompt))
 
     # AI 응답 생성
@@ -219,9 +227,13 @@ def next_turn_node(state: Dict[str, Any]) -> Dict[str, Any]:
 def wait_for_user_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     사용자 입력을 기다리는 노드
-    이 노드는 실제로는 아무것도 하지 않고,
-    외부에서 user_input이나 user_target을 주입할 때까지 대기
+    LangGraph interrupt를 트리거해 그래프 실행을 일시 중단한다.
     """
-    # 사용자가 입력할 때까지 대기
-    # 실제 입력은 외부(play_game_langgraph.py)에서 state에 주입됨
+    # interrupt는 재개 시 제공된 데이터(예: invoke를 통해)를 반환합니다.
+    resume_data = interrupt("wait_user")
+    
+    # 데이터가 제공되었다면 상태를 업데이트하기 위해 반환합니다.
+    if resume_data:
+        return resume_data
+        
     return state

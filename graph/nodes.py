@@ -149,14 +149,29 @@ def user_input_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     # 다음 라운드로 진행
     current_round = state.get("round_number", 1)
-
-    return {
+    
+    # 기본 업데이트 값
+    updates = {
         "messages": [user_message],
         "user_input": None,  # 초기화
         "phase": "discussion",  # 다시 토론 페이즈로
         "turn_count": 0,  # 턴 카운트 리셋
         "round_number": current_round + 1  # 라운드 증가
     }
+    
+    # 특정 대상 지목 확인 ([이름에게])
+    import re
+    match = re.search(r"\[(.*?)에게\]", user_input)
+    if match:
+        target_name = match.group(1)
+        # 캐릭터 리스트에 존재하는지 확인
+        characters = state.get("characters", [])
+        for char in characters:
+            if char["name"] == target_name:
+                updates["current_speaker"] = target_name
+                break
+
+    return updates
 
 
 def vote_node(state: Dict[str, Any]) -> Dict[str, Any]:

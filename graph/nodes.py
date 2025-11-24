@@ -141,6 +141,14 @@ def user_input_node(state: Dict[str, Any]) -> Dict[str, Any]:
     if not user_input:
         return state
 
+    # 종료 명령어 처리 (1:1 모드에서 복귀)
+    if user_input.lower() in ["q", "exit", "quit"]:
+        return {
+            "phase": "discussion",
+            "user_input": None,
+            "messages": [SystemMessage(content="1:1 대화를 종료하고 토론 모드로 돌아갑니다.")]
+        }
+
     # 유저 메시지 추가
     user_message = HumanMessage(
         content=user_input,
@@ -154,10 +162,15 @@ def user_input_node(state: Dict[str, Any]) -> Dict[str, Any]:
     updates = {
         "messages": [user_message],
         "user_input": None,  # 초기화
-        "phase": "discussion",  # 다시 토론 페이즈로
         "turn_count": 0,  # 턴 카운트 리셋
         "round_number": current_round + 1  # 라운드 증가
     }
+
+    # 현재 페이즈가 one_on_one이면 페이즈 유지
+    if state.get("phase") == "one_on_one":
+        updates["phase"] = "one_on_one"
+    else:
+        updates["phase"] = "discussion"
     
     # 특정 대상 지목 확인 ([이름에게])
     import re
@@ -206,6 +219,10 @@ def next_turn_node(state: Dict[str, Any]) -> Dict[str, Any]:
     - AI 턴이 남았으면 다음 캐릭터로
     - AI 턴이 끝났으면 사용자 턴으로 (turn_count 리셋하지 않음)
     """
+    # 1:1 모드이면 턴 넘기지 않음
+    if state.get("phase") == "one_on_one":
+        return {}
+
     characters = state.get("characters", [])
     current = state.get("current_speaker")
     turn_count = state.get("turn_count", 0)

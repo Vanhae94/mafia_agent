@@ -158,34 +158,56 @@ def main():
                 if 1 <= target_num <= len(state["characters"]):
                     target_char = state["characters"][target_num - 1]
 
-                    # 질문 입력
-                    question = input(f"\n{target_char['name']}에게 할 질문: ").strip()
+                    print(f"\n💬 {target_char['name']}와 1:1 대화를 시작합니다.")
+                    print("   (종료하려면 'q' 또는 'exit'를 입력하세요)")
+                    print("=" * 70)
 
-                    if question:
-                        print("\n" + "=" * 70)
-                        print(f"💬 {target_char['name']}와의 대화")
-                        print("=" * 70)
+                    while True:
+                        # 질문 입력
+                        question = input(f"\n나 ({target_char['name']}에게): ").strip()
 
-                        # user_input 주입 후 그래프 재개
-                        user_message = f"[{target_char['name']}에게] {question}"
-                        result = app.invoke(
-                            Command(resume={"user_input": user_message}),
-                            config
-                        )
-                        state = result
+                        if question.lower() in ['q', 'exit', 'quit']:
+                            print("\n👋 대화를 종료합니다.")
+                            # 종료 신호 전송 (토론 모드로 복귀)
+                            result = app.invoke(
+                                Command(resume={"user_input": "exit", "phase": "discussion"}),
+                                config
+                            )
+                            state = result
+                            break
 
-                        # 새로 추가된 메시지들만 출력
-                        messages = state.get("messages", [])
-                        new_messages = messages[last_message_count:]
+                        if question:
+                            # user_input 주입 후 그래프 재개
+                            # 1:1 모드 유지를 위해 phase 정보도 함께 전달 (선택적)
+                            user_message = f"[{target_char['name']}에게] {question}"
+                            
+                            # 첫 진입 시 또는 계속 대화 시 one_on_one 페이즈로 설정
+                            # nodes.py에서 user_input이 있으면 phase를 one_on_one으로 유지하도록 처리됨
+                            # 하지만 명시적으로 phase를 보낼 수도 있음 (nodes.py 수정에 따라 다름)
+                            # 여기서는 nodes.py가 state['phase']를 확인하므로, 
+                            # 첫 진입 시에는 이전에 discussion이었을 수 있으므로 resume 데이터에 phase를 포함하는 것이 안전
+                            
+                            resume_data = {
+                                "user_input": user_message,
+                                "phase": "one_on_one" 
+                            }
+                            
+                            result = app.invoke(
+                                Command(resume=resume_data),
+                                config
+                            )
+                            state = result
 
-                        for msg in new_messages:
-                            print_message(msg)
+                            # 새로 추가된 메시지들만 출력
+                            messages = state.get("messages", [])
+                            new_messages = messages[last_message_count:]
 
-                        last_message_count = len(messages)
+                            for msg in new_messages:
+                                print_message(msg)
 
-                        print("\n" + "=" * 70)
-                    else:
-                        print("❌ 질문을 입력하세요.")
+                            last_message_count = len(messages)
+                        else:
+                            print("❌ 질문을 입력하세요.")
                 else:
                     print("❌ 1-5 사이의 숫자를 입력하세요.")
             except ValueError:

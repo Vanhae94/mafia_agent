@@ -43,6 +43,10 @@ def should_continue_discussion(state: GameState) -> str:
     elif phase == "discussion":
         return "character_speak"
 
+    # 1:1 대화 모드 (사용자 입력 대기)
+    elif phase == "one_on_one":
+        return "wait_user"
+
     # 기본값
     else:
         return "character_speak"

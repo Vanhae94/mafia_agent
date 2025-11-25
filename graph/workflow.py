@@ -72,19 +72,6 @@ def after_user_wait(state: GameState) -> str:
 def create_game_graph():
     """
     마피아 게임 그래프 생성
-
-    플로우:
-    setup → next_turn → [조건부]
-                      ↓
-            character_speak (AI 말하기)
-                      ↓
-                  next_turn
-                      ↓
-            wait_user (사용자 턴)
-                      ↓
-            user_input or vote
-                      ↓
-                  next_turn (다시 AI 턴으로)
     """
     # StateGraph 초기화
     workflow = StateGraph(GameState)

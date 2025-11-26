@@ -160,7 +160,10 @@ def main():
             # 따라서 처음에 한 번 실행하고 대기 상태가 됨
             
             result = app.invoke(
-                Command(resume={"user_input": "[AI들끼리 자유롭게 대화를 시작합니다]"}),
+                Command(resume={
+                    "user_input": "[AI들끼리 자유롭게 대화를 시작합니다]",
+                    "phase": "free_discussion"  # 다수 논의 모드 페이즈 설정
+                }),
                 config
             )
             state = result
@@ -185,15 +188,12 @@ def main():
                 
                 if not user_action:
                     # Enter 입력: 다음 턴 진행
-                    # wait_user에서 멈춰있는 상태. 아무 입력 없이 resume하면
-                    # workflow.py의 after_user_wait에서 character_speak로 보냄
                     result = app.invoke(
-                        Command(resume={}),
+                        Command(resume={"action": "next"}),
                         config
                     )
                 else:
                     # 텍스트 입력: 끼어들기
-                    # user_input을 주입하면 user_input 노드로 감
                     result = app.invoke(
                         Command(resume={"user_input": user_action}),
                         config

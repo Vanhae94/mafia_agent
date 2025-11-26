@@ -13,19 +13,14 @@ from graph.nodes import (
     vote_node,
     next_turn_node,
     wait_for_user_node,
-    night_phase_node  # night_phase_node 추가
+    night_phase_node,
+    select_next_speaker_node  # select_next_speaker_node 추가
 )
 
 
 def should_continue_discussion(state: GameState) -> str:
     """
     대화를 계속할지 결정하는 조건부 엣지
-
-    로직:
-    1. phase가 "end"면 종료
-    2. phase가 "user_turn"이면 사용자 턴 대기
-    3. phase가 "discussion"이면 AI가 계속 말하기
-    4. phase가 "night"이면 밤 페이즈로 이동 (이 로직은 외부에서 phase 변경 시 작동)
     """
     phase = state.get("phase", "discussion")
 
@@ -50,7 +45,7 @@ def should_continue_discussion(state: GameState) -> str:
         return "night_phase"
 
     # AI 토론 계속 (수동 진행을 위해 wait_user로 보냄)
-    elif phase == "discussion":
+    elif phase == "discussion" or phase == "free_discussion":
         return "wait_user"
 
     # 기본값
@@ -61,27 +56,37 @@ def should_continue_discussion(state: GameState) -> str:
 def after_user_wait(state: GameState) -> str:
     """
     사용자 대기 후 다음 동작 결정
-
-    - user_input이 들어왔으면 user_input 노드로
-    - user_target이 들어왔으면 vote 노드로
-    - phase가 night로 변경되었으면 night_phase 노드로
-    - 아무것도 없으면 (Enter)
-        - discussion 페이즈면 character_speak (다음 AI 발언)
-        - 아니면 계속 대기
     """
+    
     if state.get("phase") == "night":
         return "night_phase"
     elif state.get("user_target"):
         return "vote"
     elif state.get("user_input"):
         return "user_input"
+    elif state.get("phase") == "free_discussion":
+        return "select_next_speaker"        
     else:
-        # discussion 페이즈에서 입력 없이 재개되면 다음 AI 발언 진행
-        if state.get("phase") == "discussion":
-            return "character_speak"
-            
         # 계속 대기 (실제로는 외부에서 입력을 주입할 때까지)
         return "wait_user"
+
+
+def after_user_input(state: GameState) -> str:
+    """
+    유저 입력 후 분기 처리
+    
+    - free_discussion: 다음 화자 선정 (select_next_speaker)
+    - one_on_one: 현재 화자 유지 (character_speak)
+    - 그 외: select_next_speaker (기본값)
+    """
+    phase = state.get("phase")
+    
+    if phase == "free_discussion":
+        return "select_next_speaker"
+    elif phase == "one_on_one":
+        return "character_speak"
+    else:
+        return "select_next_speaker"
 
 
 def create_game_graph():
@@ -94,23 +99,28 @@ def create_game_graph():
     # 노드 추가
     workflow.add_node("setup", setup_game_node)
     workflow.add_node("character_speak", character_speak_node)
-    workflow.add_node("wait_user", wait_for_user_node)  # wait_for_user_node 함수 사용
+    workflow.add_node("wait_user", wait_for_user_node)
     workflow.add_node("user_input", user_input_node)
     workflow.add_node("vote", vote_node)
     workflow.add_node("next_turn", next_turn_node)
-    workflow.add_node("night_phase", night_phase_node)  # 밤 페이즈 노드 추가
+    workflow.add_node("night_phase", night_phase_node)
+    workflow.add_node("select_next_speaker", select_next_speaker_node) # 노드 추가
 
     # 시작점: setup
     workflow.set_entry_point("setup")
 
     # setup 후 바로 wait_user로 (사용자 명령 대기)
-    # 토큰 낭비 방지: 시작하자마자 AI가 말하지 않음
     workflow.add_edge("setup", "wait_user")
 
-    # character_speak 후 next_turn
+    # select_next_speaker 후 character_speak
+    workflow.add_edge("select_next_speaker", "character_speak")
+
+    # character_speak 후 next_turn (discussion 모드에서는 next_turn이 사실상 wait_user로 가는 역할만 하거나 무시됨)
+    # 하지만 기존 로직 유지를 위해 next_turn을 거치게 하되, next_turn의 역할을 축소했음.
+    # discussion 모드에서는 next_turn -> should_continue_discussion -> wait_user로 감
     workflow.add_edge("character_speak", "next_turn")
     
-    # night_phase 후 wait_user (밤 결과 확인 및 다음 라운드 시작 대기)
+    # night_phase 후 wait_user
     workflow.add_edge("night_phase", "wait_user")
 
     # next_turn 후 조건부 분기
@@ -118,36 +128,42 @@ def create_game_graph():
         "next_turn",
         should_continue_discussion,
         {
-            "character_speak": "character_speak",  # 계속 AI 턴
-            "wait_user": "wait_user",              # 사용자 턴
-            "vote": "vote",                        # 투표
-            "end": END,                            # 종료
-            "night_phase": "night_phase"           # 밤 페이즈
+            "character_speak": "character_speak",  # (사용 안함)
+            "wait_user": "wait_user",              # discussion 모드에서는 여기로
+            "vote": "vote",
+            "end": END,
+            "night_phase": "night_phase"
         }
     )
 
     # wait_user 노드에서 사용자 입력 대기
-    # (실제로는 무한 루프처럼 보이지만, 외부에서 state를 주입하면 탈출)
     workflow.add_conditional_edges(
         "wait_user",
         after_user_wait,
         {
-            "user_input": "user_input",  # 일반 대화
-            "vote": "vote",              # 투표
-            "wait_user": "wait_user",    # 입력 대기 (그래프 일시 중단)
-            "night_phase": "night_phase", # 밤 페이즈 진입
-            "character_speak": "character_speak" # discussion 페이즈 자동 진행
+            "user_input": "user_input",
+            "vote": "vote",
+            "wait_user": "wait_user",
+            "night_phase": "night_phase",
+            "select_next_speaker": "select_next_speaker", # discussion 모드 자동 진행
+            "character_speak": "character_speak" # (하위 호환)
         }
     )
 
-    # user_input 후 character_speak으로 (AI 토론 시작)
-    workflow.add_edge("user_input", "character_speak")
+    # user_input 후 분기 처리 (1:1 vs 다수 논의)
+    workflow.add_conditional_edges(
+        "user_input",
+        after_user_input,
+        {
+            "select_next_speaker": "select_next_speaker",
+            "character_speak": "character_speak"
+        }
+    )
 
     # vote 후 종료
     workflow.add_edge("vote", END)
 
-    # 컴파일 - MemorySaver를 checkpointer로 사용
-    # interrupt() 사용 시 checkpointer 필수
+    # 컴파일
     memory = MemorySaver()
     app = workflow.compile(checkpointer=memory)
 

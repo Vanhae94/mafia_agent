@@ -1,265 +1,94 @@
-# 🕵️ 마피아 추리 게임
+# 🕵️ Mafia Agent (LangGraph Edition)
 
-**LangGraph 기반 멀티 에이전트 AI 추리 게임**
+**LangGraph**와 **Google Gemini Pro**를 활용한 멀티 에이전트 마피아 게임 프로젝트입니다.
+5명의 AI 캐릭터와 사용자가 함께 추리하고 대화하며 범인(마피아)을 찾아내는 텍스트 기반 게임입니다.
 
-## 🎮 게임 소개
+## 🌟 주요 기능 (Key Features)
 
-5명의 개성있는 AI 캐릭터 중 1명이 범인(마피아)입니다!
-AI들과 자유롭게 대화하며 단서를 찾고, 누가 범인인지 추리하세요.
+*   **멀티 에이전트 시스템**: 5명의 AI 캐릭터가 각자의 성격(Personality)과 직업(Job)을 가지고 독립적으로 사고하고 대화합니다.
+*   **LangGraph 기반 워크플로우**: 게임의 상태(State)와 흐름(Workflow)을 그래프 구조로 관리하여 복잡한 게임 로직(낮/밤, 투표, 토론 등)을 유연하게 처리합니다.
+*   **의심 시스템 (Suspicion System)**:
+    *   **유저 의심**: 사용자가 특정 AI를 의심하면 해당 캐릭터의 의심 수치가 증가합니다.
+    *   **AI 상호 의심**: 라운드 종료 시 AI들이 대화 내용을 분석하여 서로를 의심하고 평가합니다.
+    *   **반응형 대화**: 의심 수치가 높아지면 캐릭터들이 방어적이거나 당황하는 등 감정적인 반응을 보입니다.
+*   **동적 화자 선정 (Dynamic Speaker Selection)**: 대화 맥락을 분석하여 다음 발언자를 LLM이 자동으로 선정, 자연스러운 토론 흐름을 만듭니다.
+*   **낮/밤 사이클**: 낮에는 자유 토론과 추리를, 밤에는 마피아의 습격(희생자 발생) 이벤트가 진행됩니다.
 
-### ✨ 특징
-- 🎭 **5명의 다양한 캐릭터**: 각자 고유한 성격, 직업, 말투
-- 🎲 **무작위 범인 선정**: 매 게임마다 다른 범인
-- 💬 **자유로운 대화**: AI와 자연스러운 대화
-- 🔍 **추리 게임**: 대화 속 단서로 범인 찾기
-- 🔥 **LangGraph + LangSmith**: 최신 멀티 에이전트 시스템
+## 🛠️ 기술 스택 (Tech Stack)
 
----
+*   **Language**: Python 3.10+
+*   **Framework**: [LangGraph](https://langchain-ai.github.io/langgraph/), [LangChain](https://www.langchain.com/)
+*   **LLM**: Google Gemini-2.0-flash (via `langchain-google-genai`)
+*   **Monitoring**: [LangSmith](https://smith.langchain.com/) (Optional, for tracing)
+*   **Environment Management**: `python-dotenv`
 
-## 🚀 빠른 시작
+## 📂 프로젝트 구조 (Directory Structure)
 
-### 1. 패키지 설치
+```
+mafia_agent/
+├── characters/             # AI 캐릭터 정의 모듈
+│   ├── artist.py           # 예술가 캐릭터
+│   ├── chef.py             # 요리사 캐릭터
+│   ├── office_worker.py    # 회사원 캐릭터
+│   ├── student.py          # 대학생 캐릭터
+│   └── teacher.py          # 선생님 캐릭터
+├── graph/                  # LangGraph 핵심 로직
+│   ├── nodes.py            # 그래프 노드 (게임 로직 단위)
+│   ├── state.py            # 게임 상태 스키마 (GameState)
+│   └── workflow.py         # 그래프 구성 및 엣지 정의
+├── play_game_langgraph.py  # 게임 실행 엔트리포인트 (메인 UI)
+├── requirements.txt        # 의존성 패키지 목록
+└── .env                    # 환경 변수 (API Key 등)
+```
+
+## 🧩 아키텍처 및 로직 (Architecture)
+
+이 프로젝트는 **StateGraph**를 사용하여 게임의 흐름을 제어합니다.
+
+### 1. GameState (상태 관리)
+게임의 모든 데이터는 `GameState` 딕셔너리에 저장되어 노드 간에 전달됩니다.
+- `characters`: 캐릭터 정보 목록
+- `messages`: 대화 로그
+- `phase`: 현재 게임 단계 (`discussion`, `night`, `vote` 등)
+- `suspicion_counts`: 캐릭터별 의심 수치
+- `alive_status`: 생존 여부
+
+### 2. Workflow (게임 흐름)
+주요 노드와 흐름은 다음과 같습니다:
+
+1.  **Setup**: 게임 초기화, 마피아 선정.
+2.  **Discussion Loop**:
+    *   `select_next_speaker`: 대화 맥락을 분석해 다음 화자 선정.
+    *   `character_speak`: 선정된 캐릭터가 LLM을 통해 발언 생성 (의심 수치 반영).
+    *   `wait_user`: 사용자의 개입(끼어들기, 의심하기, 투표 등)을 대기.
+3.  **Suspicion**: 사용자가 특정 AI를 의심하면 수치 증가.
+4.  **AI Suspicion**: 낮 토론 종료 후, AI들이 서로를 평가하여 의심 수치 업데이트.
+5.  **Night Phase**: 마피아가 생존자 중 한 명을 습격(제거).
+6.  **Vote**: 사용자가 범인을 지목하여 승패 결정.
+
+## 🚀 설치 및 실행 (Installation & Usage)
+
+### 1. 환경 설정
+필요한 패키지를 설치합니다.
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 환경 변수 설정
-`.env` 파일에 API 키 설정:
+### 2. API 키 설정
+`.env` 파일을 생성하고 Google API 키를 입력합니다.
 ```env
-GOOGLE_API_KEY=your-google-api-key
+GOOGLE_API_KEY=your_api_key_here
+# LANGCHAIN_TRACING_V2=true  # (선택) LangSmith 추적 활성화
+# LANGCHAIN_API_KEY=your_langchain_api_key
 ```
 
-### 3. 게임 시작!
+### 3. 게임 실행
 ```bash
 python play_game_langgraph.py
 ```
 
----
-
-## 🎯 게임 진행 방법
-
-1. **게임 시작**: 5명의 캐릭터 소개
-2. **AI 대화 관찰**: AI들끼리 대화하며 분위기 파악
-3. **질문하기**: 모두에게 질문 던지기
-4. **단서 수집**: 이상한 점 찾기
-5. **범인 투표**: 범인이라 생각하는 사람 지목
-
----
-
-## 👥 등장 캐릭터
-
-| 이름 | 나이 | 직업 | 성격 |
-|------|------|------|------|
-| 한기옥 | 24세 | 대학생 | 활발, 감정적, 호기심 많음 |
-| 박준호 | 32세 | 회사원 | 침착, 논리적, 신중함 |
-| 정소은 | 28세 | 일러스트레이터 | 감성적, 직관적, 관찰력 |
-| 이성민 | 35세 | 셰프 | 유쾌, 솔직, 다혈질 |
-| 한영희 | 63세 | 은퇴 교사 | 지혜로움, 온화함, 경험 많음 |
-
-자세한 설명: [CHARACTERS.md](CHARACTERS.md)
-
----
-
-## 🏗️ 프로젝트 구조
-
-```
-mafia_agent/
-├── 🎮 play_game_langgraph.py   ⭐ LangGraph 메인 게임
-│
-├── 📊 graph/                   LangGraph 시스템
-│   ├── state.py               # GameState 정의
-│   ├── nodes.py               # 기능 노드들
-│   └── workflow.py            # Graph 구성
-│
-├── 🎭 characters/             캐릭터 정의
-│   ├── student.py
-│   ├── office_worker.py
-│   ├── artist.py
-│   ├── chef.py
-│   └── teacher.py
-│
-└── 📚 문서
-    ├── README.md              # 이 파일
-    ├── CHARACTERS.md          # 캐릭터 상세
-    ├── LANGGRAPH_MIGRATION.md # 마이그레이션 가이드
-    └── PROJECT_STRUCTURE.md   # 전체 구조
-```
-
----
-
-## 💡 핵심 기술: LangGraph
-
-### 왜 LangGraph인가?
-
-**기존 방식의 한계:**
-- 수동 상태 관리
-- 복잡한 흐름 제어
-- 디버깅 어려움
-
-**LangGraph 장점:**
-✅ **State 관리**: 모든 에이전트가 하나의 State 공유
-✅ **명확한 흐름**: Graph로 게임 로직 시각화
-✅ **조건부 분기**: 복잡한 로직 쉽게 처리
-✅ **LangSmith 통합**: 실시간 모니터링
-✅ **확장성**: 새로운 기능 추가 용이
-
-### LangGraph 구조
-
-```
-[START]
-   ↓
-setup_game (캐릭터 생성, 범인 선정)
-   ↓
-next_turn (턴 진행)
-   ↓
-[조건부 분기]
-   ├─→ character_speak (AI 발언)
-   ├─→ wait_for_user (사용자 입력 대기 - Interrupt)
-   │         ↓
-   │    (Command로 재개)
-   │         ↓
-   ├─→ user_input (유저 입력)
-   ├─→ vote (투표)
-   └─→ [END]
-```
-
-**핵심 메커니즘: Interrupt & Resume**
-- **Interrupt**: `wait_for_user` 노드에서 그래프 실행을 일시 중단하고 사용자 입력을 기다립니다.
-- **Resume**: 사용자가 입력을 제공하면 `Command(resume=...)`를 통해 중단된 지점에서 그래프를 재개합니다.
-- 이를 통해 웹 서버나 CLI 환경에서 비동기적인 사용자 상호작용을 완벽하게 지원합니다.
-
-자세한 내용: [LANGGRAPH_MIGRATION.md](LANGGRAPH_MIGRATION.md)
-
----
-
-## 🔧 기술 스택
-
-- **Python 3.13**
-- **LangChain** - AI 프레임워크
-- **LangGraph** - 멀티 에이전트 오케스트레이션
-- **LangSmith** - 모니터링 (선택)
-- **Google Gemini AI** - 생성형 AI
-
----
-
-## 📋 개발 진행 상황
-
-### ✅ Phase 1: 단일 AI 캐릭터
-- LangChain 기본 사용법
-- 한 명의 AI와 대화
-
-### ✅ Phase 2: 멀티 AI 에이전트
-- 여러 AI가 서로 대화
-- 대화 관리 시스템
-
-### ✅ Phase 3: 완전한 게임
-- 5명의 개성있는 캐릭터
-- 무작위 범인 시스템
-- 유저 참여 대화
-- 투표 시스템
-
-### ✅ Phase 4: LangGraph 전환
-- State 기반 멀티 에이전트
-- Graph로 게임 흐름 관리
-- LangSmith 통합 준비
-
-### 🔜 Phase 5: 웹 인터페이스 (예정)
-- FastAPI 백엔드
-- React 프론트엔드
-- 실시간 채팅 UI
-
----
-
-## 🎓 학습 튜토리얼
-
-### 단계별 학습
-```bash
-# 1단계: 기본 AI 대화
-python main.py
-
-# 2단계: AI 간 대화
-python phase2_demo.py
-
-# 3단계: 캐릭터 시스템
-python test_new_characters.py
-
-# 4단계: LangGraph 게임
-python play_game_langgraph.py
-
-# 5단계: Interrupt/Resume 테스트
-python test_fix.py
-
-# 6단계: 그래프 시각화
-python graph/workflow.py
-```
-
----
-
-## 🔍 LangSmith 모니터링 (선택)
-
-실시간으로 AI 에이전트 동작을 추적하고 디버깅할 수 있습니다.
-
-### 설정
-1. https://smith.langchain.com 에서 계정 생성
-2. API 키 발급
-3. `.env`에 추가:
-```env
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_API_KEY=your-langsmith-key
-LANGCHAIN_PROJECT=mafia-game
-```
-
-### 대시보드에서 확인 가능
-- 각 노드의 입출력
-- 실행 시간
-- 에러 추적
-- 대화 흐름
-
----
-
-## 📚 학습 포인트
-
-1. **AI 에이전트 설계**: 성격을 가진 AI 만들기
-2. **멀티 에이전트 시스템**: LangGraph로 여러 AI 조율
-3. **State 관리**: 중앙 집중식 상태 관리
-4. **프롬프트 엔지니어링**: 자연스러운 대화 유도
-5. **Graph 기반 흐름 제어**: 복잡한 로직을 선언적으로 표현
-
----
-
-## 🛠️ 개발 가이드
-
-### 새 캐릭터 추가
-1. `characters/new_character.py` 생성
-2. `get_character_info()` 정의
-3. `graph/nodes.py`에서 import
-
-### 새 기능 추가
-1. `graph/nodes.py`에 노드 함수 작성
-2. `graph/workflow.py`에서 그래프에 연결
-
-### 디버깅
-- LangSmith 대시보드 활용
-- `graph/workflow.py` 실행해서 그래프 구조 확인
-
----
-
-## 📖 관련 문서
-
-- [캐릭터 상세 설명](CHARACTERS.md)
-- [LangGraph 마이그레이션 가이드](LANGGRAPH_MIGRATION.md)
-- [프로젝트 구조 상세](PROJECT_STRUCTURE.md)
-- [LangGraph 공식 문서](https://langchain-ai.github.io/langgraph/)
-- [LangSmith 가이드](https://docs.smith.langchain.com/)
-
----
-
-## 🤝 기여
-
-이 프로젝트는 LangChain과 LangGraph를 활용한 멀티 에이전트 시스템 학습을 위한 교육용 프로젝트입니다.
-
----
-
-## 📝 라이선스
-
-이 프로젝트는 학습 목적으로 만들어졌습니다.
+### 4. 플레이 방법
+- **자유 토론**: AI들의 대화를 지켜보거나, 직접 대화에 끼어들어 질문할 수 있습니다.
+- **의심하기**: 수상한 행동을 하는 AI를 지목하여 압박(의심 수치 증가)할 수 있습니다.
+- **1:1 대화**: 특정 캐릭터와 따로 대화하며 심문할 수 있습니다.
+- **투표**: 범인을 확신하면 투표하여 게임을 끝낼 수 있습니다.

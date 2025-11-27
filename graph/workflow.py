@@ -14,7 +14,9 @@ from graph.nodes import (
     next_turn_node,
     wait_for_user_node,
     night_phase_node,
-    select_next_speaker_node  # select_next_speaker_node 추가
+    select_next_speaker_node,
+    suspicion_node,      # 추가
+    ai_suspicion_node    # 추가
 )
 
 
@@ -40,9 +42,9 @@ def should_continue_discussion(state: GameState) -> str:
     elif phase == "one_on_one":
         return "wait_user"
         
-    # 밤 페이즈로 이동
+    # 밤 페이즈로 이동 (AI 의심 로직 실행 후 밤으로)
     elif phase == "night":
-        return "night_phase"
+        return "ai_suspicion"
 
     # AI 토론 계속 (수동 진행을 위해 wait_user로 보냄)
     elif phase == "discussion" or phase == "free_discussion":
@@ -55,15 +57,25 @@ def should_continue_discussion(state: GameState) -> str:
 
 def after_user_wait(state: GameState) -> str:
     """
-    사용자 대기 후 다음 동작 결정
+    사용자 대기 후 분기 처리
     """
-    
-    if state.get("phase") == "night":
-        return "night_phase"
-    elif state.get("user_target"):
+    # 유저가 의심하기를 선택한 경우
+    if state.get("user_input") == "suspect":
+        return "suspicion"
+
+    # 사용자가 투표를 했으면 투표 처리
+    if state.get("user_target"):
         return "vote"
+        
+    # 밤 페이즈로 이동
+    elif state.get("phase") == "night":
+        return "ai_suspicion"
+        
+    # 사용자가 입력을 했으면 입력 처리
     elif state.get("user_input"):
         return "user_input"
+        
+    # 아무 입력 없이 재개된 경우 (Enter 입력 등)
     elif state.get("phase") == "free_discussion":
         return "select_next_speaker"        
     else:
@@ -104,7 +116,9 @@ def create_game_graph():
     workflow.add_node("vote", vote_node)
     workflow.add_node("next_turn", next_turn_node)
     workflow.add_node("night_phase", night_phase_node)
-    workflow.add_node("select_next_speaker", select_next_speaker_node) # 노드 추가
+    workflow.add_node("select_next_speaker", select_next_speaker_node)
+    workflow.add_node("suspicion", suspicion_node)          # 추가
+    workflow.add_node("ai_suspicion", ai_suspicion_node)    # 추가
 
     # 시작점: setup
     workflow.set_entry_point("setup")
@@ -115,24 +129,29 @@ def create_game_graph():
     # select_next_speaker 후 character_speak
     workflow.add_edge("select_next_speaker", "character_speak")
 
-    # character_speak 후 next_turn (discussion 모드에서는 next_turn이 사실상 wait_user로 가는 역할만 하거나 무시됨)
-    # 하지만 기존 로직 유지를 위해 next_turn을 거치게 하되, next_turn의 역할을 축소했음.
-    # discussion 모드에서는 next_turn -> should_continue_discussion -> wait_user로 감
+    # character_speak 후 next_turn
     workflow.add_edge("character_speak", "next_turn")
     
     # night_phase 후 wait_user
     workflow.add_edge("night_phase", "wait_user")
+
+    # suspicion 후 wait_user (의심만 하고 다시 대기)
+    workflow.add_edge("suspicion", "wait_user")
+
+    # ai_suspicion 후 night_phase
+    workflow.add_edge("ai_suspicion", "night_phase")
 
     # next_turn 후 조건부 분기
     workflow.add_conditional_edges(
         "next_turn",
         should_continue_discussion,
         {
-            "character_speak": "character_speak",  # (사용 안함)
-            "wait_user": "wait_user",              # discussion 모드에서는 여기로
+            "character_speak": "character_speak",
+            "wait_user": "wait_user",
             "vote": "vote",
             "end": END,
-            "night_phase": "night_phase"
+            "night_phase": "night_phase", # (Legacy)
+            "ai_suspicion": "ai_suspicion" # New path for night
         }
     )
 
@@ -144,13 +163,15 @@ def create_game_graph():
             "user_input": "user_input",
             "vote": "vote",
             "wait_user": "wait_user",
-            "night_phase": "night_phase",
-            "select_next_speaker": "select_next_speaker", # discussion 모드 자동 진행
-            "character_speak": "character_speak" # (하위 호환)
+            "night_phase": "night_phase", # (Legacy)
+            "ai_suspicion": "ai_suspicion", # New path for night
+            "select_next_speaker": "select_next_speaker",
+            "character_speak": "character_speak",
+            "suspicion": "suspicion" # New path for user suspicion
         }
     )
 
-    # user_input 후 분기 처리 (1:1 vs 다수 논의)
+    # user_input 후 분기 처리
     workflow.add_conditional_edges(
         "user_input",
         after_user_input,

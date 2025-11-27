@@ -5,6 +5,8 @@ Interrupt + Checkpointer 방식 사용
 
 from graph.workflow import create_game_graph
 from graph.state import GameState
+from langgraph.types import Command
+import os
 
 
 def print_message(message):
@@ -16,19 +18,21 @@ def print_message(message):
 
 
 def print_characters(state: GameState):
-    """캐릭터 목록 출력"""
+    """캐릭터 목록 출력 (의심 수치 포함)"""
     print("\n" + "=" * 70)
     print(f"👥 참가자 목록 (Round {state.get('round_number', 1)} - {state.get('day_night', 'day').upper()})")
     print("=" * 70)
     
     alive_status = state.get("alive_status", {})
+    suspicion_counts = state.get("suspicion_counts", {})
     
     for i, char in enumerate(state["characters"], 1):
         name = char['name']
         is_alive = alive_status.get(name, True)
         status_mark = "🟢 생존" if is_alive else "🔴 사망"
+        suspicion = suspicion_counts.get(name, 0)
         
-        print(f"\n{i}. {name} [{status_mark}]")
+        print(f"\n{i}. {name} [{status_mark}] (의심: {suspicion})")
         print(f"   나이: {char.get('age', '?')}세")
         print(f"   직업: {char.get('job', '?')}")
         print(f"   성격: {char.get('personality', '?')}")
@@ -47,7 +51,8 @@ def print_menu():
     print("5. 밤 행동 로그 확인")
     print("6. 라운드 요약 확인")
     print("7. 다음 라운드 진행 (밤으로 이동)")
-    print("8. 게임 종료")
+    print("9. 특정 AI 의심하기")
+    print("q. 게임 종료")
     print("=" * 70)
 
 
@@ -63,7 +68,6 @@ def main():
     print("  • 밤이 되면 마피아가 활동하여 희생자가 발생합니다")
 
     # LangSmith 추적 상태 확인
-    import os
     if os.getenv("LANGCHAIN_TRACING_V2") == "true":
         if os.getenv("LANGCHAIN_API_KEY"):
             print("\n🔍 LangSmith 추적 활성화됨!")
@@ -78,19 +82,14 @@ def main():
     # 그래프 생성 (checkpointer 포함)
     app = create_game_graph()
 
-    # Command 객체 임포트 (재개용)
-    from langgraph.types import Command
-
     # Thread ID - 이 ID로 checkpointer에서 state를 추적
     thread_id = "mafia_game_session_1"
     config = {"configurable": {"thread_id": thread_id}}
 
     # 초기 상태로 실행
-    # setup → wait_user → interrupt 발생 → 그래프 중단
     print("\n🎲 게임 세팅 중...")
 
     # 첫 실행 - setup부터 시작
-    # 이미 실행된 적이 있는지 확인하기 위해 state를 먼저 가져와 봄
     current_state = app.get_state(config)
     if current_state.next:
         print("🔄 기존 게임 세션을 불러옵니다...")
@@ -98,9 +97,6 @@ def main():
     else:
         result = app.invoke({}, config)
         state = result
-
-    # wait_user에서 interrupt 발생했으므로 여기서 멈춤
-    # checkpointer가 현재 state 저장
 
     print(f"\n✅ 게임이 시작되었습니다!")
     print(f"   총 {len(state['characters'])}명의 캐릭터가 참여합니다.")
@@ -124,7 +120,7 @@ def main():
             print("\n🌙 밤이 되었습니다. 마피아가 활동합니다...")
             # 밤 페이즈 진행을 위해 그래프 재개
             result = app.invoke(
-                Command(resume={"phase": "night"}), # workflow.py의 after_user_wait에서 처리
+                Command(resume={"phase": "night"}),
                 config
             )
             state = result
@@ -141,7 +137,7 @@ def main():
 
         print_menu()
 
-        choice = input("\n선택 (1-8): ").strip()
+        choice = input("\n선택 > ").strip()
 
         if choice == "1":
             # AI들끼리 자유롭게 대화 (수동 진행 모드)
@@ -153,16 +149,11 @@ def main():
             print(" - 텍스트 입력: 대화에 끼어들기")
             print(" - 'q' 또는 'exit': 대화 종료 및 메뉴로 복귀")
             
-            # 초기 진입: 첫 발언 시작
-            # user_input을 주입하여 시작하지만, 실제로는 next_turn -> wait_user로 가서 대기할 수도 있음
-            # workflow 로직상:
-            # 1. user_input -> character_speak -> next_turn -> wait_user (여기서 멈춤)
-            # 따라서 처음에 한 번 실행하고 대기 상태가 됨
-            
             result = app.invoke(
                 Command(resume={
                     "user_input": "[AI들끼리 자유롭게 대화를 시작합니다]",
-                    "phase": "free_discussion"  # 다수 논의 모드 페이즈 설정
+                    "phase": "free_discussion",
+                    "action": "next"
                 }),
                 config
             )
@@ -241,6 +232,14 @@ def main():
                     print("   (종료하려면 'q' 또는 'exit'를 입력하세요)")
                     print("=" * 70)
 
+                    # 1:1 모드 진입
+                    result = app.invoke(
+                        Command(resume={"phase": "one_on_one", "user_input": f"[{target_char['name']}에게] 안녕?"}),
+                        config
+                    )
+                    state = result
+                    last_message_count = len(state.get("messages", []))
+
                     while True:
                         # 질문 입력
                         question = input(f"\n나 ({target_char['name']}에게): ").strip()
@@ -304,7 +303,6 @@ def main():
                     print(f"\n🎯 {selected['name']}을(를) 범인으로 지목합니다...")
 
                     # user_target 주입 후 그래프 재개
-                    # wait_user → vote → END
                     result = app.invoke(
                         Command(resume={"user_target": selected["name"]}),
                         config
@@ -357,39 +355,74 @@ def main():
             # 다음 라운드 진행 (밤으로 이동)
             print("\n🌙 밤이 깊어갑니다... 다음 라운드로 넘어갑니다.")
             
-            # phase를 night로 변경하여 그래프 재개
-            # workflow.py의 after_user_wait에서 phase='night'이면 night_phase로 이동하도록 처리됨 (가정)
-            # 하지만 현재 workflow.py에는 after_user_wait에서 phase를 체크하는 로직이 없을 수 있음.
-            # workflow.py를 확인해보니 after_user_wait에서 phase=='night' 체크가 있음.
-            
-            # state 자체를 업데이트해서 보내야 함
-            # Command(resume={"phase": "night"}) -> wait_user가 받아서 state 업데이트 -> after_user_wait 호출
-            
-            # wait_for_user_node는 resume_data를 그대로 반환하여 state를 업데이트함
-            # 따라서 resume={"phase": "night"}를 보내면 state["phase"]가 "night"가 됨
-            
             result = app.invoke(
                 Command(resume={"phase": "night"}),
                 config
             )
             state = result
             
-            # 밤 페이즈 로직이 실행되고 다시 wait_user로 돌아옴 (workflow.py 참조)
-            # night_phase 노드 실행 결과 출력
+            # 밤 페이즈 로직이 실행되고 다시 wait_user로 돌아옴
             messages = state.get("messages", [])
             new_messages = messages[last_message_count:]
             for msg in new_messages:
                 print_message(msg)
             last_message_count = len(messages)
 
-        elif choice == "8":
+        elif choice == "9":
+            # 특정 AI 의심하기
+            print("\n" + "-" * 70)
+            print("👁️ 누구를 의심하시겠습니까?")
+            print("-" * 70)
+            
+            alive_status = state.get("alive_status", {})
+            suspicion_counts = state.get("suspicion_counts", {})
+
+            for i, char in enumerate(state["characters"], 1):
+                status = "🟢" if alive_status.get(char['name'], True) else "🔴(사망)"
+                suspicion = suspicion_counts.get(char['name'], 0)
+                print(f"{i}. {char['name']} ({char.get('job', '?')}) {status} (의심: {suspicion})")
+
+            print("-" * 70)
+
+            try:
+                target_num = int(input("\n번호 선택 (1-5): ").strip())
+                if 1 <= target_num <= len(state["characters"]):
+                    target_char = state["characters"][target_num - 1]
+                    
+                    # 사망자 확인
+                    if not alive_status.get(target_char['name'], True):
+                        print(f"\n❌ {target_char['name']}님은 사망하여 의심할 수 없습니다.")
+                        continue
+
+                    print(f"\n👁️ {target_char['name']}을(를) 의심합니다...")
+                    
+                    # 의심 액션 전송
+                    result = app.invoke(
+                        Command(resume={"user_input": "suspect", "user_target": target_char["name"]}),
+                        config
+                    )
+                    state = result
+                    
+                    # 결과 메시지 출력
+                    messages = state.get("messages", [])
+                    new_messages = messages[last_message_count:]
+                    for msg in new_messages:
+                        print_message(msg)
+                    last_message_count = len(messages)
+                    
+                else:
+                    print("❌ 1-5 사이의 숫자를 입력하세요.")
+            except ValueError:
+                print("❌ 숫자를 입력하세요.")
+
+        elif choice.lower() in ['q', 'exit']:
             # 게임 종료
             print("\n게임을 종료합니다.")
             print(f"💡 참고: 범인은 '{state['mafia_name']}'이었습니다.")
             game_over = True
 
         else:
-            print("❌ 1-8 사이의 숫자를 입력하세요.")
+            print("❌ 올바른 번호를 입력하세요.")
 
     print("\n" + "=" * 70)
     print("🎮 게임이 종료되었습니다!")

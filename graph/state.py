@@ -22,7 +22,6 @@ class GameState(TypedDict):
     phase: str  # 게임 페이즈: "intro", "discussion", "voting", "end", "night", "one_on_one"
     day_night: str  # "day" or "night"
     turn_count: int  # 현재 라운드에서 몇 명이 말했는지
-    ai_turns_per_round: int  # 한 라운드당 AI가 말하는 횟수 (기본 3)
 
     # 캐릭터 정보
     characters: List[dict]  # 모든 캐릭터 정보

@@ -45,6 +45,10 @@ mafia_agent/
 
 이 프로젝트는 **StateGraph**를 사용하여 게임의 흐름을 제어합니다.
 
+### 0. Graph 구조 시각화
+
+![alt text](image.png)
+
 ### 1. GameState (상태 관리)
 게임의 모든 데이터는 `GameState` 딕셔너리에 저장되어 노드 간에 전달됩니다.
 - `characters`: 캐릭터 정보 목록

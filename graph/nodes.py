@@ -45,7 +45,7 @@ def setup_game_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "phase": "discussion",
         "day_night": "day",
         "turn_count": 0,
-        "messages": [SystemMessage(content="게임이 시작되었습니다.")],
+        "messages": [SystemMessage(content="🎭 마피아 게임 시작! 참가자 5명 중 1명이 마피아입니다. 밤마다 마피아는 한 명씩 제거합니다. 범인을 찾아내지 못하면 모두가 위험합니다. 지금부터 서로를 관찰하고, 대화하며, 의심스러운 행동을 찾아내세요.")],
         "votes": {},
         "current_speaker": characters[0]["name"],
         "next_speaker": None,
@@ -57,6 +57,7 @@ def setup_game_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "suspicion_counts": suspicion_counts,
         "night_logs": [],
         "round_summary": "",
+        "round_summaries": {},
         "death_log": []
     }
 
@@ -142,6 +143,12 @@ def character_speak_node(state: Dict[str, Any]) -> Dict[str, Any]:
     # 의심 수치 반영
     suspicion_counts = state.get("suspicion_counts", {})
     my_suspicion = suspicion_counts.get(speaker_name, 0)
+    
+    # 라운드 요약 반영 (기억)
+    round_summaries = state.get("round_summaries", {})
+    if round_summaries:
+        summary_text = "\n".join([f"[Round {r} 요약]: {s}" for r, s in round_summaries.items()])
+        system_prompt += f"\n\n[지난 라운드 기억]\n{summary_text}\n"
     
     system_prompt += f"\n\n[상태 정보]\n현재 당신의 의심 수치: {my_suspicion}\n"
     
@@ -281,9 +288,10 @@ def select_next_speaker_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
 **선정 기준:**
 1. 직전 발언이 특정인에게 질문했다면, 그 사람이 대답해야 합니다.
-2. 대화의 흐름상 가장 자연스럽게 이어받을 사람을 선택하세요.
-3. 직전 발언자는 가급적 제외하세요 (연속 발언 지양).
-4. 위의 조건을 만족하면서 다양한 캐릭터의 발언을 시도하세요.
+2. 다양한 캐릭터의 발언을 시도하세요.
+3. 대화의 흐름상 가장 자연스럽게 이어받을 사람을 선택하세요.
+4. 직전 발언자는 가급적 제외하세요 (연속 발언 지양).
+
 
 **출력 형식:**
 캐릭터 이름만 딱 하나 출력하세요. (예: "김철수")
@@ -520,3 +528,70 @@ def ai_suspicion_node(state: Dict[str, Any]) -> Dict[str, Any]:
         print(f"AI Suspicion Error: {e}")
         
     return {}
+
+
+def summarize_round_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    라운드 요약 및 메모리 관리 노드
+    - 현재 라운드의 주요 사건 요약
+    - 요약본 저장
+    - 메시지 히스토리 초기화 (토큰 관리)
+    """
+    messages = state.get("messages", [])
+    round_number = state.get("round_number", 1)
+    round_summaries = state.get("round_summaries", {})
+    night_logs = state.get("night_logs", [])
+    suspicion_counts = state.get("suspicion_counts", {})
+    
+    # LLM 초기화
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.0-flash",
+        google_api_key=os.getenv("GOOGLE_API_KEY")
+    )
+    
+    # 요약 프롬프트 구성
+    prompt = f"""
+[Round {round_number} 요약 요청]
+
+다음은 이번 라운드(Day {round_number})의 전체 대화 및 사건 기록입니다.
+이 내용을 바탕으로 다음 라운드에서 캐릭터들이 기억해야 할 핵심 내용을 요약해주세요.
+
+[대화 기록]
+"""
+    for msg in messages:
+        sender = msg.name if hasattr(msg, 'name') else "System"
+        prompt += f"- {sender}: {msg.content}\n"
+        
+    prompt += f"""
+[밤 행동 로그]
+{json.dumps(night_logs, ensure_ascii=False)}
+
+[현재 의심 수치]
+{json.dumps(suspicion_counts, ensure_ascii=False)}
+
+**요약 가이드라인:**
+1. 누가 누구를 의심했는지, 주요 대립 구도는 무엇이었는지 요약하세요.
+2. 사망자가 발생했다면 누구인지 명시하세요.
+3. 캐릭터들이 다음 날 아침에 기억해야 할 중요한 단서나 발언을 포함하세요.
+4. 전체 길이는 500자 이내로 핵심만 간결하게 작성하세요.
+"""
+
+    # 요약 생성
+    response = llm.invoke([HumanMessage(content=prompt)])
+    summary_text = response.content.strip()
+    
+    # 요약 저장
+    round_summaries[round_number] = summary_text
+    
+    # 메시지 초기화 (요약본만 남기고 리셋)
+    # 다음 라운드 시작 시 시스템 메시지로 요약본을 제공하는 방식
+    new_messages = [
+        SystemMessage(content=f"=== Round {round_number} 요약 ===\n{summary_text}\n=================="),
+        SystemMessage(content=f"Day {round_number + 1} 아침이 밝았습니다.")
+    ]
+    
+    return {
+        "round_summaries": round_summaries,
+        "messages": new_messages,
+        "turn_count": 0
+    }

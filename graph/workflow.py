@@ -15,8 +15,9 @@ from graph.nodes import (
     wait_for_user_node,
     night_phase_node,
     select_next_speaker_node,
-    suspicion_node,      # 추가
-    ai_suspicion_node    # 추가
+    suspicion_node,
+    ai_suspicion_node,
+    summarize_round_node  # 추가
 )
 
 
@@ -117,8 +118,9 @@ def create_game_graph():
     workflow.add_node("next_turn", next_turn_node)
     workflow.add_node("night_phase", night_phase_node)
     workflow.add_node("select_next_speaker", select_next_speaker_node)
-    workflow.add_node("suspicion", suspicion_node)          # 추가
-    workflow.add_node("ai_suspicion", ai_suspicion_node)    # 추가
+    workflow.add_node("suspicion", suspicion_node)
+    workflow.add_node("ai_suspicion", ai_suspicion_node)
+    workflow.add_node("summarize_round", summarize_round_node)  # 추가
 
     # 시작점: setup
     workflow.set_entry_point("setup")
@@ -132,8 +134,11 @@ def create_game_graph():
     # character_speak 후 next_turn
     workflow.add_edge("character_speak", "next_turn")
     
-    # night_phase 후 wait_user
-    workflow.add_edge("night_phase", "wait_user")
+    # night_phase 후 summarize_round (요약 및 메모리 초기화)
+    workflow.add_edge("night_phase", "summarize_round")
+    
+    # summarize_round 후 wait_user (다음 날 아침 시작 대기)
+    workflow.add_edge("summarize_round", "wait_user")
 
     # suspicion 후 wait_user (의심만 하고 다시 대기)
     workflow.add_edge("suspicion", "wait_user")

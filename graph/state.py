@@ -31,7 +31,8 @@ class GameState(TypedDict):
 
     # 로그 및 요약
     night_logs: List[str]  # 밤 행동 로그
-    round_summary: Optional[str]  # 이전 라운드 요약
+    round_summary: Optional[str]  # 이전 라운드 요약 (Legacy)
+    round_summaries: Dict[int, str]  # 라운드별 요약 {라운드: 요약}
     death_log: List[str]  # 사망 로그
 
     # 현재 턴

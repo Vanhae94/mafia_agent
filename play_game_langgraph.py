@@ -344,11 +344,14 @@ def main():
             print("\n" + "=" * 70)
             print("📝 라운드 요약")
             print("=" * 70)
-            summary = state.get("round_summary", "")
-            if summary:
-                print(summary)
+            round_summaries = state.get("round_summaries", {})
+            if round_summaries:
+                for r_num, summary in sorted(round_summaries.items()):
+                    print(f"\n[Round {r_num} 요약]")
+                    print(summary)
+                    print("-" * 50)
             else:
-                print("아직 요약된 내용이 없습니다.")
+                print("아직 기록된 라운드 요약이 없습니다.")
             print("=" * 70)
             
         elif choice == "7":
@@ -362,9 +365,10 @@ def main():
             state = result
             
             # 밤 페이즈 로직이 실행되고 다시 wait_user로 돌아옴
+            # 메시지가 초기화되었을 수 있으므로 전체 메시지를 다시 확인
             messages = state.get("messages", [])
-            new_messages = messages[last_message_count:]
-            for msg in new_messages:
+            # 요약본과 아침 인사가 포함된 새 메시지 출력
+            for msg in messages:
                 print_message(msg)
             last_message_count = len(messages)
 

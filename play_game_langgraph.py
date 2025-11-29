@@ -329,15 +329,24 @@ def main():
         elif choice == "5":
             # 밤 행동 로그 확인
             print("\n" + "=" * 70)
-            print("🌙 지난 밤 행동 로그")
-            print("=" * 70)
+            print("🌙 [밤 행동 로그]")
             night_logs = state.get("night_logs", [])
+            clues = state.get("clues", [])
+            
             if night_logs:
                 for log in night_logs:
                     print(f"- {log}")
             else:
-                print("아직 기록된 로그가 없습니다.")
-            print("=" * 70)
+                print("기록된 밤 행동이 없습니다.")
+                
+            if clues:
+                print("\n🕵️ [현장 증거 (단서)]")
+                for clue in clues:
+                    print(f"- {clue}")
+            else:
+                print("\n🕵️ 발견된 단서가 없습니다.")
+                
+            input("\n엔터를 누르면 돌아갑니다...")
             
         elif choice == "6":
             # 라운드 요약 확인

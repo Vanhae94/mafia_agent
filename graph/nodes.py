@@ -56,6 +56,7 @@ def setup_game_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "alive_status": alive_status,
         "suspicion_counts": suspicion_counts,
         "night_logs": [],
+        "clues": [],
         "round_summary": "",
         "round_summaries": {},
         "death_log": []
@@ -97,6 +98,54 @@ def night_phase_node(state: Dict[str, Any]) -> Dict[str, Any]:
         
         # 시스템 메시지 추가
         message = f"🌙 밤이 지났습니다.\n안타깝게도 {victim_name}이(가) 살해당한 채 발견되었습니다."
+        
+        # --- 단서 생성 로직 (LLM) ---
+        try:
+            # 마피아 정보 가져오기
+            mafia_char = next((c for c in characters if c["name"] == mafia_name), None)
+            
+            if mafia_char:
+                llm = ChatGoogleGenerativeAI(
+                    model="gemini-2.0-flash",
+                    google_api_key=os.getenv("GOOGLE_API_KEY")
+                )
+                
+                clue_prompt = f"""
+당신은 추리 소설의 작가입니다.
+마피아 게임에서 밤사이 살인 사건이 발생했습니다.
+범인의 특징을 암시하는 '현장 증거(단서)'를 하나 생성해주세요.
+
+[범인 정보]
+- 이름: {mafia_char['name']}
+- 직업: {mafia_char['job']}
+- 성격: {mafia_char['personality']}
+- 특징: {mafia_char.get('prompt', '')[:200]}...
+
+[피해자 정보]
+- 이름: {victim_name}
+
+[요청사항]
+1. 범인의 직업이나 성격, 취미와 관련된 미묘한 단서를 만드세요.
+2. **절대 범인의 이름을 직접 언급하지 마세요.**
+3. **직업명을 직접 언급하지 마세요.** (예: "붓" 대신 "물감 냄새", "요리사 모자" 대신 "특이한 향신료")
+4. 냄새, 소리, 떨어진 물건, 흔적 등 감각적인 묘사를 사용하세요.
+5. 한 문장으로 짧게 작성하세요.
+
+예시:
+- (화가가 범인일 때): "피해자의 옷깃에서 희미하게 테레빈유 냄새가 난다."
+- (학생이 범인일 때): "현장에 찢어진 전공 서적의 한 페이지가 떨어져 있다."
+"""
+                response = llm.invoke([HumanMessage(content=clue_prompt)])
+                clue_text = response.content.strip()
+                
+                # 단서 저장
+                clues = state.get("clues", [])
+                clues.append(f"[Day {round_number} 아침 발견] {clue_text}")
+                state["clues"] = clues
+                
+        except Exception as e:
+            print(f"Clue Generation Error: {e}")
+
     else:
         message = "🌙 밤이 지났습니다. 아무 일도 일어나지 않았습니다."
 
@@ -106,6 +155,7 @@ def night_phase_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "day_night": "day",
         "alive_status": alive_status,
         "night_logs": [night_log_entry] if night_log_entry else [],
+        "clues": state.get("clues", []),
         "messages": [SystemMessage(content=message)],
         "turn_count": 0
     }
@@ -587,7 +637,7 @@ def summarize_round_node(state: Dict[str, Any]) -> Dict[str, Any]:
     # 다음 라운드 시작 시 시스템 메시지로 요약본을 제공하는 방식
     new_messages = [
         SystemMessage(content=f"=== Round {round_number} 요약 ===\n{summary_text}\n=================="),
-        SystemMessage(content=f"Day {round_number + 1} 아침이 밝았습니다.")
+        SystemMessage(content=f"Day {round_number} 아침이 밝았습니다.")
     ]
     
     return {

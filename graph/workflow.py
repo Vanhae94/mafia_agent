@@ -104,7 +104,7 @@ def after_user_input(state: GameState) -> str:
 
 def create_game_graph():
     """
-    마피아 게임 그래프 생성
+    팬텀로그 게임 그래프 생성
     """
     # StateGraph 초기화
     workflow = StateGraph(GameState)

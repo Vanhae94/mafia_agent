@@ -1,5 +1,5 @@
 """
-LangGraph 기반 마피아 게임
+LangGraph 기반 팬텀로그(텍스트기반 추리 게임)
 Interrupt + Checkpointer 방식 사용
 """
 
@@ -46,7 +46,7 @@ def print_menu():
     print("=" * 70)
     print("1. 다수와 논의하기")
     print("2. 특정 AI와 대화하기")
-    print("3. 범인 투표")
+    print("3. 팬텀 지목 (투표)")
     print("4. 생존자 목록 보기")
     print("5. 밤 행동 로그 확인")
     print("6. 라운드 요약 확인")
@@ -58,14 +58,14 @@ def print_menu():
 
 def main():
     print("\n" + "=" * 70)
-    print("🎭 마피아 추리 게임 (LangGraph 버전)")
+    print("👻 팬텀 로그 (Phantom Log)")
     print("=" * 70)
     print("\n🔥 LangGraph + LangSmith 기반 멀티 에이전트 시스템")
     print("\n게임 규칙:")
-    print("  • 5명 중 1명이 범인(마피아)입니다")
+    print("  • 5명 중 1명이 '팬텀'(살인마)입니다")
     print("  • AI들과 대화하며 단서를 찾으세요")
-    print("  • 누가 범인인지 추리하세요")
-    print("  • 밤이 되면 마피아가 활동하여 희생자가 발생합니다")
+    print("  • 누가 팬텀인지 추리하세요")
+    print("  • 밤이 되면 팬텀이 활동하여 희생자가 발생합니다")
 
     # LangSmith 추적 상태 확인
     if os.getenv("LANGCHAIN_TRACING_V2") == "true":
@@ -83,7 +83,7 @@ def main():
     app = create_game_graph()
 
     # Thread ID - 이 ID로 checkpointer에서 state를 추적
-    thread_id = "mafia_game_session_1"
+    thread_id = "phantom_game_session_1"
     config = {"configurable": {"thread_id": thread_id}}
 
     # 초기 상태로 실행
@@ -100,7 +100,7 @@ def main():
 
     print(f"\n✅ 게임이 시작되었습니다!")
     print(f"   총 {len(state['characters'])}명의 캐릭터가 참여합니다.")
-    print(f"   이 중 1명이 범인입니다.")
+    print(f"   이 중 1명이 팬텀입니다.")
 
     # 캐릭터 목록 보기
     print_characters(state)
@@ -117,7 +117,7 @@ def main():
         
         # 밤 페이즈 처리 (자동 진행 또는 알림)
         if current_phase == "night":
-            print("\n🌙 밤이 되었습니다. 마피아가 활동합니다...")
+            print("\n🌙 밤이 되었습니다. 팬텀이 활동합니다...")
             # 밤 페이즈 진행을 위해 그래프 재개
             result = app.invoke(
                 Command(resume={"phase": "night"}),
@@ -287,7 +287,7 @@ def main():
         elif choice == "3":
             # 범인 투표
             print("\n" + "-" * 70)
-            print("🗳️  누가 범인이라고 생각하시나요?")
+            print("🗳️  누가 팬텀이라고 생각하시나요?")
             print("-" * 70)
 
             for i, char in enumerate(state["characters"], 1):
@@ -300,7 +300,7 @@ def main():
                 if 1 <= vote <= len(state["characters"]):
                     selected = state["characters"][vote - 1]
 
-                    print(f"\n🎯 {selected['name']}을(를) 범인으로 지목합니다...")
+                    print(f"\n🎯 {selected['name']}을(를) 팬텀으로 지목합니다...")
 
                     # user_target 주입 후 그래프 재개
                     result = app.invoke(
@@ -431,7 +431,7 @@ def main():
         elif choice.lower() in ['q', 'exit']:
             # 게임 종료
             print("\n게임을 종료합니다.")
-            print(f"💡 참고: 범인은 '{state['mafia_name']}'이었습니다.")
+            print(f"💡 참고: 팬텀은 '{state['phantom_name']}'이었습니다.")
             game_over = True
 
         else:

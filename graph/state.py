@@ -25,7 +25,7 @@ class GameState(TypedDict):
 
     # 캐릭터 정보
     characters: List[dict]  # 모든 캐릭터 정보
-    mafia_name: Optional[str]  # 범인 이름 (비밀)
+    phantom_name: Optional[str]  # 범인 이름 (비밀)
     alive_status: Dict[str, bool]  # 생존 여부 {이름: True/False}
     suspicion_counts: Dict[str, int]  # 의심 횟수 {이름: count}
 

@@ -32,7 +32,7 @@ def setup_game_node(state: Dict[str, Any]) -> Dict[str, Any]:
         characters.append(char_info)
 
     # 무작위 범인 선정
-    mafia = random.choice(characters)
+    phantom = random.choice(characters)
 
     # 초기 생존 상태 및 의심 카운트 설정
     alive_status = {char["name"]: True for char in characters}
@@ -40,12 +40,12 @@ def setup_game_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "characters": characters,
-        "mafia_name": mafia["name"],
+        "phantom_name": phantom["name"],
         "round_number": 1,
         "phase": "discussion",
         "day_night": "day",
         "turn_count": 0,
-        "messages": [SystemMessage(content="🎭 마피아 게임 시작! 참가자 5명 중 1명이 마피아입니다. 밤마다 마피아는 한 명씩 제거합니다. 범인을 찾아내지 못하면 모두가 위험합니다. 지금부터 서로를 관찰하고, 대화하며, 의심스러운 행동을 찾아내세요.")],
+        "messages": [SystemMessage(content="👻 팬텀 로그 시작! 참가자 5명 중 1명이 인간으로 둔갑한 유령 '팬텀'입니다. 밤마다 팬텀은 한 명씩 제거합니다. 팬텀을 찾아내지 못하면 모두가 위험합니다. 지금부터 서로를 관찰하고, 대화하며, 의심스러운 행동을 찾아내세요.")],
         "votes": {},
         "current_speaker": characters[0]["name"],
         "next_speaker": None,
@@ -67,19 +67,19 @@ def night_phase_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     밤 페이즈 처리 노드
     - 라운드 증가
-    - 희생자 선정 (마피아 제외, 생존자 중 랜덤)
+    - 희생자 선정 (팬텀 제외, 생존자 중 랜덤)
     - 생존 상태 업데이트
     - 밤 행동 로그 생성
     """
     characters = state.get("characters", [])
-    mafia_name = state.get("mafia_name")
+    phantom_name = state.get("phantom_name")
     alive_status = state.get("alive_status", {})
     round_number = state.get("round_number", 1)
     
-    # 생존자 목록 (마피아 제외)
+    # 생존자 목록 (팬텀 제외)
     targets = [
         char for char in characters 
-        if char["name"] != mafia_name and alive_status.get(char["name"], True)
+        if char["name"] != phantom_name and alive_status.get(char["name"], True)
     ]
     
     night_log_entry = ""
@@ -101,10 +101,10 @@ def night_phase_node(state: Dict[str, Any]) -> Dict[str, Any]:
         
         # --- 단서 생성 로직 (LLM) ---
         try:
-            # 마피아 정보 가져오기
-            mafia_char = next((c for c in characters if c["name"] == mafia_name), None)
+            # 팬텀 정보 가져오기
+            phantom_char = next((c for c in characters if c["name"] == phantom_name), None)
             
-            if mafia_char:
+            if phantom_char:
                 llm = ChatGoogleGenerativeAI(
                     model="gemini-2.0-flash",
                     google_api_key=os.getenv("GOOGLE_API_KEY")
@@ -112,21 +112,21 @@ def night_phase_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 
                 clue_prompt = f"""
 당신은 추리 소설의 작가입니다.
-마피아 게임에서 밤사이 살인 사건이 발생했습니다.
-범인의 특징을 암시하는 '현장 증거(단서)'를 하나 생성해주세요.
+'팬텀 로그'라는 게임에서 밤사이 살인 사건이 발생했습니다.
+팬텀(범인)의 특징을 암시하는 '현장 증거(단서)'를 하나 생성해주세요.
 
-[범인 정보]
-- 이름: {mafia_char['name']}
-- 직업: {mafia_char['job']}
-- 성격: {mafia_char['personality']}
-- 특징: {mafia_char.get('prompt', '')[:200]}...
+[팬텀 정보]
+- 이름: {phantom_char['name']}
+- 직업: {phantom_char['job']}
+- 성격: {phantom_char['personality']}
+- 특징: {phantom_char.get('prompt', '')[:200]}...
 
 [피해자 정보]
 - 이름: {victim_name}
 
 [요청사항]
-1. 범인의 직업이나 성격, 취미와 관련된 미묘한 단서를 만드세요.
-2. **절대 범인의 이름을 직접 언급하지 마세요.**
+1. 팬텀의 직업이나 성격, 취미와 관련된 미묘한 단서를 만드세요.
+2. **절대 팬텀의 이름을 직접 언급하지 마세요.**
 3. **직업명을 직접 언급하지 마세요.** (예: "붓" 대신 "물감 냄새", "요리사 모자" 대신 "특이한 향신료")
 4. 냄새, 소리, 떨어진 물건, 흔적 등 감각적인 묘사를 사용하세요.
 5. 한 문장으로 짧게 작성하세요.
@@ -140,7 +140,7 @@ def night_phase_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 
                 # 단서 저장
                 clues = state.get("clues", [])
-                clues.append(f"[Day {round_number} 아침 발견] {clue_text}")
+                clues.append(f"[Day {round_number+1} 아침 발견] {clue_text}")
                 state["clues"] = clues
                 
         except Exception as e:
@@ -220,26 +220,26 @@ def character_speak_node(state: Dict[str, Any]) -> Dict[str, Any]:
     elif my_suspicion >= 5:
         system_prompt += """
 [심리 상태: 극도의 불안 및 패닉]
-사람들이 나를 범인으로 확신하는 것 같아 매우 불안합니다.
+사람들이 나를 팬텀으로 확신하는 것 같아 매우 불안합니다.
 - 목소리가 떨리거나, 감정적으로 격해지세요.
 - 억울함을 호소하거나, 강하게 화를 내며 상황을 모면하려 하세요.
 """
 
     # 범인이라면 특별 지시 추가
-    if character["name"] == state["mafia_name"]:
+    if character["name"] == state["phantom_name"]:
         system_prompt += """
 
 === 중요: 당신의 역할 ===
-🔴 당신은 이번 게임의 **범인(마피아)**입니다.
+🔴 당신은 이번 게임의 **팬텀(살인마)**입니다.
 
-범인으로서의 임무:
+팬텀으로서의 임무:
 1. 다른 사람들에게 들키지 않기
 2. 평소 성격대로 행동하되, 의심받지 않도록 조심
 3. 필요하면 거짓 알리바이를 만들어내기
 4. 자연스럽게 다른 사람을 의심하기
 ========================
 """
-        # 마피아 전용 반응 (의심 수치 3 이상부터)
+        # 팬텀 전용 반응 (의심 수치 3 이상부터)
         if my_suspicion >= 3:
             system_prompt += """
 🚨 [위기 상황] 의심 수치가 위험 수준입니다! (3 이상)
@@ -252,7 +252,7 @@ def character_speak_node(state: Dict[str, Any]) -> Dict[str, Any]:
         # 시민인데 의심받는 경우 (5 이상일 때 더 강력한 반응)
         if my_suspicion >= 5:
             system_prompt += """
-🚨 [위기 상황] 억울하게 범인으로 몰리고 있습니다! (의심 수치 5 이상)
+🚨 [위기 상황] 억울하게 팬텀으로 몰리고 있습니다! (의심 수치 5 이상)
 당신은 결백한데 아무도 믿어주지 않아 답답해 미칠 지경입니다.
 - "진짜 아니라니까요!!", "증거를 대보세요!"라며 소리치거나 강하게 호소하세요.
 """
@@ -434,18 +434,18 @@ def vote_node(state: Dict[str, Any]) -> Dict[str, Any]:
     투표 처리 노드
     """
     user_target = state.get("user_target")
-    mafia_name = state.get("mafia_name")
+    phantom_name = state.get("phantom_name")
 
     if not user_target:
         return state
 
     # 결과 판정
-    if user_target == mafia_name:
+    if user_target == phantom_name:
         result = "win"
-        message = f"🎉 정답입니다! {user_target}이(가) 범인이었습니다!"
+        message = f"🎉 정답입니다! {user_target}이(가) 팬텀이었습니다!"
     else:
         result = "lose"
-        message = f"😢 틀렸습니다. {user_target}은(는) 범인이 아닙니다. 진짜 범인은 {mafia_name}입니다."
+        message = f"😢 틀렸습니다. {user_target}은(는) 팬텀이 아닙니다. 진짜 팬텀은 {phantom_name}입니다."
 
     return {
         "accused": user_target,
@@ -531,7 +531,7 @@ def ai_suspicion_node(state: Dict[str, Any]) -> Dict[str, Any]:
 **분석 기준:**
 1. 말이 앞뒤가 안 맞거나, 거짓말을 하는 것 같은 사람
 2. 지나치게 방어적이거나, 반대로 지나치게 공격적인 사람
-3. 마피아 같은 행동을 보인 사람
+3. 팬텀 같은 행동을 보인 사람
 
 **출력 형식 (JSON):**
 {{

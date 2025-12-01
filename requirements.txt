@@ -7,3 +7,5 @@ langgraph
 langgraph-checkpoint
 langsmith
 python-dotenv
+fastapi
+uvicorn

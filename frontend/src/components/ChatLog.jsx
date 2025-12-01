@@ -1,54 +1,29 @@
 import React, { useEffect, useRef } from 'react';
-import { User, Bot } from 'lucide-react';
 
 const ChatLog = ({ messages }) => {
-    const bottomRef = useRef(null);
+  const scrollRef = useRef(null);
 
-    useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
-    return (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 glass-panel mb-0 custom-scrollbar">
-            {messages.map((msg, idx) => {
-                const isUser = msg.sender === '유저';
-                const isSystem = msg.sender === 'System';
-
-                if (isSystem) {
-                    return (
-                        <div key={idx} className="flex justify-center my-4">
-                            <span className="text-xs text-gray-500 bg-gray-900 px-3 py-1 rounded-full border border-gray-800">
-                                {msg.content}
-                            </span>
-                        </div>
-                    );
-                }
-
-                return (
-                    <div key={idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 
-                ${isUser ? 'bg-blue-900 text-blue-200' : 'bg-cyan-900 text-cyan-200'}`}>
-                                {isUser ? <User size={16} /> : <Bot size={16} />}
-                            </div>
-
-                            <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-                                <span className="text-xs text-gray-400 mb-1">{msg.sender}</span>
-                                <div className={`p-3 rounded-lg text-sm leading-relaxed
-                  ${isUser
-                                        ? 'bg-blue-900/30 border border-blue-500/30 text-blue-100 rounded-tr-none'
-                                        : 'bg-cyan-900/30 border border-cyan-500/30 text-cyan-100 rounded-tl-none'
-                                    }`}>
-                                    {msg.content}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            })}
-            <div ref={bottomRef} />
+  return (
+    <div ref={scrollRef} className="absolute inset-0 overflow-y-auto p-6 space-y-4 scrollbar-hide">
+      {messages.map((msg, idx) => (
+        <div key={idx} className={`flex ${msg.sender === 'User' ? 'justify-end' : 'justify-start'}`}>
+          <div className={`max-w-[70%] ${msg.type === 'system' ? 'w-full max-w-none text-center' : ''}`}>
+            {msg.type !== 'system' && msg.sender !== 'User' && (
+              <span className="text-xs font-mono text-neon-cyan mb-1 block pl-1">> {msg.sender}</span>
+            )}
+            <div className={`p-4 rounded-lg text-sm leading-relaxed border backdrop-blur-sm ${msg.type === 'system' ? 'bg-transparent border-none text-gray-500 text-xs font-mono my-4' : msg.sender === 'User' ? 'bg-neon-cyan/10 border-neon-cyan/30 text-cyan-50 rounded-br-none' : 'bg-noir-800 border-noir-700 text-gray-300 rounded-tl-none shadow-lg'}`}>
+              {msg.text}
+            </div>
+          </div>
         </div>
-    );
+      ))}
+    </div>
+  );
 };
-
 export default ChatLog;

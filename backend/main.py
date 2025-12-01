@@ -8,11 +8,11 @@ import os
 
 app = FastAPI(title="Phantom Log API")
 
-# In-memory storage for simplicity (in a real app, use a database)
-# LangGraph checkpointer handles the actual state persistence if configured,
-# but here we just need to manage thread_ids.
-# Since we are using MemorySaver in create_game_graph (assumed), 
-# we just need to keep track of the thread_id for the session.
+# 간단한 인메모리 저장소 (실제 앱에서는 데이터베이스 사용 권장)
+# LangGraph checkpointer가 설정된 경우 실제 상태 유지를 처리하지만,
+# 여기서는 thread_id만 관리하면 됩니다.
+# create_game_graph에서 MemorySaver를 사용한다고 가정하므로,
+# 세션의 thread_id만 추적하면 됩니다.
 
 class GameStartRequest(BaseModel):
     player_name: str = "User"
@@ -34,10 +34,11 @@ class GameStateResponse(BaseModel):
     suspicion_counts: Dict[str, int]
     night_logs: List[str]
     clues: List[str]
+    round_summaries: Dict[int, str]
     game_over: bool
     winner: Optional[str] = None
 
-# Initialize Graph
+# 그래프 초기화
 game_graph = create_game_graph()
 
 def format_messages(messages):
@@ -53,11 +54,11 @@ async def start_game(request: GameStartRequest):
     thread_id = str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}}
     
-    # Initial invocation
-    # This will run until the first interrupt (likely wait_for_user_node)
+    # 초기 실행
+    # 첫 번째 인터럽트(아마도 wait_for_user_node)까지 실행됩니다
     result = game_graph.invoke({}, config)
     
-    # Get the state after invocation
+    # 실행 후 상태 가져오기
     state = game_graph.get_state(config).values
     
     return {
@@ -71,6 +72,7 @@ async def start_game(request: GameStartRequest):
         "suspicion_counts": state.get("suspicion_counts", {}),
         "night_logs": state.get("night_logs", []),
         "clues": state.get("clues", []),
+        "round_summaries": state.get("round_summaries", {}),
         "game_over": False,
         "winner": None
     }
@@ -85,7 +87,7 @@ async def get_game_state(thread_id: str):
         
     state = current_state.values
     
-    # Check for game over condition (if applicable)
+    # 게임 종료 조건 확인 (해당되는 경우)
     game_result = state.get("game_result")
     game_over = game_result is not None
     
@@ -100,6 +102,7 @@ async def get_game_state(thread_id: str):
         "suspicion_counts": state.get("suspicion_counts", {}),
         "night_logs": state.get("night_logs", []),
         "clues": state.get("clues", []),
+        "round_summaries": state.get("round_summaries", {}),
         "game_over": game_over,
         "winner": state.get("phantom_name") if game_over else None
     }
@@ -112,42 +115,52 @@ async def perform_action(request: ActionRequest):
     if not current_state.values:
         raise HTTPException(status_code=404, detail="Game session not found")
 
-    # Determine resume data based on action type
+    # 액션 타입에 따라 재개 데이터 결정
     resume_data = {}
     
     if request.action_type == "chat":
-        # User chatting
-        resume_data = {
-            "user_input": request.content,
-            # If in one_on_one, we might need to maintain phase, but user_input_node handles it
-        }
+        # 사용자 채팅
+        content = request.content
+        resume_data = {"user_input": content}
+        
+        # 1:1 대화 패턴 감지 ([이름에게] 메시지)
+        if content and content.startswith("[") and "에게]" in content:
+            resume_data["phase"] = "one_on_one"
     elif request.action_type == "next":
-        # Just pressing enter/next
+        # 단순히 엔터/다음 누르기
         resume_data = {"action": "next"}
     elif request.action_type == "vote":
-        # Voting for phantom
+        # 팬텀 투표
         resume_data = {"user_target": request.target}
     elif request.action_type == "suspect":
-        # Suspecting someone
+        # 누군가를 의심하기
         resume_data = {
             "user_input": "suspect",
             "user_target": request.target
         }
+    elif request.action_type == "one_on_one":
+        # 1:1 대화 시작 요청
+        # 그래프가 이를 처리할 수 있도록 phase를 변경하거나 특정 입력을 전달해야 함
+        # 현재 로직상 1:1은 채팅 패턴으로 감지되지만, 명시적 요청도 처리
+        resume_data = {
+            "phase": "one_on_one",
+            "user_target": request.target
+        }
     elif request.action_type == "night_start":
-         # Manually triggering night phase (if needed)
+         # 수동으로 밤 페이즈 시작 (필요한 경우)
          resume_data = {"phase": "night"}
     else:
-        raise HTTPException(status_code=400, detail="Invalid action type")
+        raise HTTPException(status_code=400, detail=f"Invalid action type: {request.action_type}")
 
-    # Resume the graph
+    # 그래프 재개
     try:
         game_graph.invoke(Command(resume=resume_data), config)
     except Exception as e:
-        # If graph finishes or errors
+        # 그래프가 완료되거나 에러가 발생한 경우
         print(f"Graph execution error or finish: {e}")
         pass
 
-    # Fetch updated state
+    # 업데이트된 상태 가져오기
     updated_state = game_graph.get_state(config).values
     
     game_result = updated_state.get("game_result")
@@ -164,6 +177,7 @@ async def perform_action(request: ActionRequest):
         "suspicion_counts": updated_state.get("suspicion_counts", {}),
         "night_logs": updated_state.get("night_logs", []),
         "clues": updated_state.get("clues", []),
+        "round_summaries": updated_state.get("round_summaries", {}),
         "game_over": game_over,
         "winner": updated_state.get("phantom_name") if game_over else None
     }

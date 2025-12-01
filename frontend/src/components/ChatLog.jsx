@@ -9,7 +9,7 @@ const ChatLog = ({ messages }) => {
     }, [messages]);
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 glass-panel mb-4 h-[60vh]">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 glass-panel mb-0 custom-scrollbar">
             {messages.map((msg, idx) => {
                 const isUser = msg.sender === '유저';
                 const isSystem = msg.sender === 'System';
@@ -28,7 +28,7 @@ const ChatLog = ({ messages }) => {
                     <div key={idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[80%] flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 
-                ${isUser ? 'bg-blue-900 text-blue-200' : 'bg-green-900 text-green-200'}`}>
+                ${isUser ? 'bg-blue-900 text-blue-200' : 'bg-cyan-900 text-cyan-200'}`}>
                                 {isUser ? <User size={16} /> : <Bot size={16} />}
                             </div>
 
@@ -37,7 +37,7 @@ const ChatLog = ({ messages }) => {
                                 <div className={`p-3 rounded-lg text-sm leading-relaxed
                   ${isUser
                                         ? 'bg-blue-900/30 border border-blue-500/30 text-blue-100 rounded-tr-none'
-                                        : 'bg-green-900/30 border border-green-500/30 text-green-100 rounded-tl-none'
+                                        : 'bg-cyan-900/30 border border-cyan-500/30 text-cyan-100 rounded-tl-none'
                                     }`}>
                                     {msg.content}
                                 </div>

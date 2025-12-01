@@ -4,7 +4,7 @@ import { Skull, HeartPulse } from 'lucide-react';
 const CharacterStatus = ({ characters, aliveStatus, suspicionCounts }) => {
     return (
         <div className="glass-panel p-4 h-full">
-            <h3 className="text-lg font-bold mb-4 neon-text-blue border-b border-gray-700 pb-2">
+            <h3 className="text-lg font-bold mb-4 noir-text-cyan border-b border-gray-700 pb-2">
                 참가자 현황
             </h3>
             <div className="space-y-3">
@@ -19,7 +19,7 @@ const CharacterStatus = ({ characters, aliveStatus, suspicionCounts }) => {
                                 : 'bg-red-900/10 border-red-900/30 opacity-60'
                             }`}>
                             <div className="flex items-center gap-3">
-                                <div className={`w-2 h-2 rounded-full ${isAlive ? 'bg-green-500 shadow-[0_0_5px_#00ff9d]' : 'bg-red-500'}`} />
+                                <div className={`w-2 h-2 rounded-full ${isAlive ? 'bg-cyan-500 shadow-[0_0_5px_#00f3ff]' : 'bg-red-500'}`} />
                                 <div>
                                     <div className="font-medium text-sm text-gray-200">
                                         {char.name}

@@ -1,3 +1,59 @@
+import os
+
+file_contents = {
+    # ---------------------------------------------------------
+    # 1. 세션 ID 생성 유틸리티 (새로 추가)
+    # ---------------------------------------------------------
+    "src/utils/session.js": """
+// 간단한 UUID 생성기 (라이브러리 없이 사용)
+export const generateSessionId = () => {
+  return 'session-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+};
+""",
+
+    # ---------------------------------------------------------
+    # 2. API 모듈 (ID를 인자로 받도록 수정)
+    # ---------------------------------------------------------
+    "src/api/gameApi.js": """
+import axios from 'axios';
+
+const API_BASE_URL = "http://localhost:8000";
+
+const client = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+export const gameApi = {
+  // 게임 시작 (Thread ID 필수)
+  startGame: async (threadId) => {
+    return await client.post('/api/game/start', { thread_id: threadId });
+  },
+
+  // 상태 조회
+  getState: async (threadId) => {
+    const response = await client.get(`/api/game/state/${threadId}`);
+    return response.data;
+  },
+
+  // 액션 전송
+  sendAction: async (threadId, actionType, content = null, target = null) => {
+    return await client.post('/api/game/action', {
+      thread_id: threadId,
+      action_type: actionType,
+      content: content,
+      target: target
+    });
+  }
+};
+""",
+
+    # ---------------------------------------------------------
+    # 3. GamePage (게임 종료 처리 및 재시작 로직 추가)
+    # ---------------------------------------------------------
+    "src/pages/GamePage.jsx": """
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChatLog from '../components/ChatLog';
@@ -218,3 +274,22 @@ const GamePage = () => {
 };
 
 export default GamePage;
+"""
+}
+
+def create_files():
+    print("🔄 Updating Game Cycle Logic (Start -> End -> Restart)...")
+    
+    # utils 디렉토리 확인
+    if not os.path.exists("src/utils"):
+        os.makedirs("src/utils")
+        
+    for file_path, content in file_contents.items():
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content.strip())
+            print(f"   -> Updated: {file_path}")
+            
+    print("\n✅ Update Complete. Try 'Restart' button after game ends!")
+
+if __name__ == "__main__":
+    create_files()

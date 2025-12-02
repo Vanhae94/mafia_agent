@@ -126,6 +126,19 @@ async def perform_action(request: UserActionRequest):
     elif request.action_type == "night_start":
          resume_data = {"phase": "night"}
 
+    elif request.action_type == "discuss":
+        resume_data = {
+            "user_input": "[AI들끼리 자유롭게 대화를 시작합니다]",
+            "phase": "free_discussion",
+            "action": "next"
+        }
+
+    elif request.action_type == "end_discuss":
+        resume_data = {
+            "user_input": "exit",
+            "phase": "discussion"
+        }
+
     try:
         # Resume graph execution
         graph_app.invoke(Command(resume=resume_data), config)

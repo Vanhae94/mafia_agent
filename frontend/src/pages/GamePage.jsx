@@ -9,7 +9,7 @@ import { Loader2, RotateCcw, Trophy, Skull } from 'lucide-react';
 
 const GamePage = () => {
   const navigate = useNavigate();
-  
+
   // 상태 관리
   const [threadId, setThreadId] = useState('');
   const [messages, setMessages] = useState([]);
@@ -28,7 +28,7 @@ const GamePage = () => {
   const startNewGame = async () => {
     const newSessionId = generateSessionId();
     setThreadId(newSessionId);
-    
+
     // UI 초기화
     setMessages([]);
     setCharacters([]);
@@ -116,11 +116,11 @@ const GamePage = () => {
 
   return (
     <div className="flex h-screen bg-noir-900 text-gray-200 overflow-hidden font-sans relative">
-      
+
       {/* Loading Overlay */}
       {loading && (
         <div className="absolute inset-0 bg-black/50 z-40 flex items-center justify-center backdrop-blur-sm">
-           <Loader2 className="w-10 h-10 text-neon-cyan animate-spin" />
+          <Loader2 className="w-10 h-10 text-neon-cyan animate-spin" />
         </div>
       )}
 
@@ -135,7 +135,7 @@ const GamePage = () => {
               <h2 className="text-3xl font-bold text-white font-mono mb-2">OPERATION ENDED</h2>
               <p className="text-gray-400">모든 추리가 종료되었습니다.</p>
             </div>
-            
+
             <div className="bg-noir-900/50 p-4 rounded-lg border border-noir-700">
               <p className="text-sm text-gray-500 mb-1">IDENTIFIED PHANTOM</p>
               <div className="text-2xl font-bold text-neon-pink flex items-center justify-center gap-2">
@@ -145,13 +145,13 @@ const GamePage = () => {
             </div>
 
             <div className="flex gap-3 pt-4">
-              <button 
+              <button
                 onClick={() => navigate('/')}
                 className="flex-1 py-3 rounded-lg border border-noir-600 text-gray-400 hover:bg-noir-700 hover:text-white transition-colors"
               >
                 메인으로
               </button>
-              <button 
+              <button
                 onClick={startNewGame}
                 className="flex-1 py-3 rounded-lg bg-neon-cyan text-black font-bold hover:bg-cyan-400 shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2"
               >
@@ -167,38 +167,38 @@ const GamePage = () => {
       <div className="flex-1 flex flex-col min-w-0 border-r border-noir-700">
         {/* Chat Log */}
         <div className="flex-[4] relative border-b border-noir-700 bg-noir-900/50">
-           <div className="absolute top-4 left-6 z-10 flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${loading ? 'bg-yellow-500' : 'bg-neon-cyan'} animate-pulse`}></span>
-              <span className="text-xs font-mono text-neon-cyan tracking-wider">
-                SESSION: {threadId.split('-')[1]}
-              </span>
-           </div>
-           <ChatLog messages={messages} />
+          <div className="absolute top-4 left-6 z-10 flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${loading ? 'bg-yellow-500' : 'bg-neon-cyan'} animate-pulse`}></span>
+            <span className="text-xs font-mono text-neon-cyan tracking-wider">
+              SESSION: {threadId.split('-')[1]}
+            </span>
+          </div>
+          <ChatLog messages={messages} />
         </div>
 
         {/* Input */}
         <div className="p-4 bg-noir-800 border-b border-noir-700">
-           <form onSubmit={handleSendMessage} className="relative">
-              <input 
-                type="text" 
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                placeholder="Type your deduction..."
-                className="w-full bg-noir-900 border border-noir-700 rounded p-3 pl-4 pr-12 text-sm focus:border-neon-cyan focus:outline-none"
-                disabled={loading || !!gameOverInfo}
-              />
-              <button type="submit" disabled={loading} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-cyan">↵</button>
-           </form>
+          <form onSubmit={handleSendMessage} className="relative">
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              placeholder="Type your deduction..."
+              className="w-full bg-noir-900 border border-noir-700 rounded p-3 pl-4 pr-12 text-sm focus:border-neon-cyan focus:outline-none"
+              disabled={loading || !!gameOverInfo}
+            />
+            <button type="submit" disabled={loading} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-cyan">↵</button>
+          </form>
         </div>
 
         {/* Characters */}
         <div className="flex-[3] p-6 bg-noir-800/30 overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 h-full content-start">
             {characters.map((char, idx) => (
-              <CharacterCard 
-                key={idx} 
-                character={char} 
-                onAction={(type) => handleAction(type, null, char.name)} 
+              <CharacterCard
+                key={idx}
+                character={char}
+                onAction={(type) => handleAction(type, null, char.name)}
               />
             ))}
           </div>
@@ -207,10 +207,13 @@ const GamePage = () => {
 
       {/* Right Zone */}
       <div className="w-80 bg-noir-900 flex-shrink-0">
-        <RightPanel 
-          phase={phase} 
-          survivorCount={characters.filter(c => c.status === 'alive').length} 
+        <RightPanel
+          phase={phase}
+          survivorCount={characters.filter(c => c.status === 'alive').length}
           onNextTurn={() => handleAction('next')}
+          onDiscuss={() => handleAction('discuss')}
+          onEndDiscuss={() => handleAction('end_discuss')}
+          onContinue={() => handleAction('next')}
         />
       </div>
     </div>

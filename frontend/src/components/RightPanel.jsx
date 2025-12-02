@@ -1,11 +1,23 @@
 import React from 'react';
-import { Sun, Moon, Search, Play, FolderOpen } from 'lucide-react';
+import { Sun, Moon, Search, Play, FolderOpen, XCircle } from 'lucide-react';
 
-const RightPanel = ({ phase, survivorCount, onNextTurn, onDiscuss, onEndDiscuss, onContinue }) => {
+const RightPanel = ({ phase, roundNumber, survivorCount, onNextTurn, onDiscuss, onEndDiscuss, onContinue }) => {
    const isFreeDiscussion = phase === 'free_discussion';
+   const isOneOnOne = phase === 'one_on_one';
 
    return (
       <div className="h-full flex flex-col border-l border-noir-700 bg-noir-800/30 p-5 space-y-6">
+
+         {/* Day / Round Indicator (Neon) */}
+         <div className="relative group">
+            <div className="absolute inset-0 bg-neon-cyan/20 blur-xl rounded-full opacity-50 group-hover:opacity-80 transition-opacity"></div>
+            <div className="relative border border-neon-cyan/50 bg-noir-900/80 rounded-xl p-4 text-center shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+               <h2 className="text-3xl font-black text-white font-mono tracking-tighter drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]">
+                  DAY {roundNumber}
+               </h2>
+               <p className="text-[10px] text-neon-cyan tracking-[0.3em] mt-1 font-bold">CURRENT ROUND</p>
+            </div>
+         </div>
 
          {/* Game Info Box */}
          <div className="space-y-4">
@@ -26,19 +38,29 @@ const RightPanel = ({ phase, survivorCount, onNextTurn, onDiscuss, onEndDiscuss,
             <div className="absolute inset-0 bg-neon-cyan/5 group-hover:bg-neon-cyan/10 transition-colors" />
 
             <div className="relative z-10 flex flex-col items-center gap-2">
-               {(phase && phase.includes('Day')) || phase === 'discussion' || phase === 'free_discussion' ? (
+               {(phase && phase.includes('Day')) || phase === 'discussion' || phase === 'free_discussion' || phase === 'one_on_one' ? (
                   <Sun className="w-10 h-10 text-yellow-500 animate-pulse" />
                ) : (
                   <Moon className="w-10 h-10 text-purple-400 animate-pulse" />
                )}
-               <h3 className="font-bold text-lg text-white mt-1 capitalize">{phase}</h3>
-               <p className="text-xs text-gray-500">AI와 대화하며 범인을 찾아보세요</p>
+               <h3 className="font-bold text-lg text-white mt-1 capitalize">{phase === 'one_on_one' ? '1:1 Chat' : phase}</h3>
+               <p className="text-xs text-gray-500">
+                  {phase === 'one_on_one' ? '비밀스러운 대화 중...' : 'AI와 대화하며 범인을 찾아보세요'}
+               </p>
             </div>
          </div>
 
          {/* Control Actions */}
          <div className="space-y-3">
-            {isFreeDiscussion ? (
+            {isOneOnOne ? (
+               <button
+                  onClick={onEndDiscuss}
+                  className="w-full py-3 bg-noir-800 border border-neon-pink/50 rounded-lg text-neon-pink hover:bg-neon-pink/10 hover:text-white hover:border-neon-pink transition-colors flex items-center justify-center gap-2 text-sm cursor-pointer shadow-[0_0_10px_rgba(236,72,153,0.2)]"
+               >
+                  <XCircle className="w-4 h-4" />
+                  귓속말 그만하기
+               </button>
+            ) : isFreeDiscussion ? (
                <>
                   <button
                      onClick={onContinue}

@@ -38,6 +38,7 @@ class UserActionRequest(BaseModel):
 class GameStateResponse(BaseModel):
     messages: List[Dict[str, Any]]
     characters: List[Dict[str, Any]]
+    round_number: int  # Added round_number
     phase: str
     day_night: str
     alive_status: Dict[str, bool]
@@ -90,6 +91,7 @@ async def get_game_state(thread_id: str):
     return {
         "messages": format_messages(state.get("messages", [])),
         "characters": state.get("characters", []),
+        "round_number": state.get("round_number", 1),  # Return round_number
         "phase": state.get("phase", "unknown"),
         "day_night": state.get("day_night", "day"),
         "alive_status": state.get("alive_status", {}),
@@ -137,6 +139,13 @@ async def perform_action(request: UserActionRequest):
         resume_data = {
             "user_input": "exit",
             "phase": "discussion"
+        }
+
+    elif request.action_type == "start_one_on_one":
+        # Start 1:1 chat with a specific target
+        resume_data = {
+            "phase": "one_on_one",
+            "user_input": f"[{request.target}에게] (대화 시작)"
         }
 
     try:

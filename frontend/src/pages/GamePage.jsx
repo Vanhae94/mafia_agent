@@ -15,6 +15,7 @@ const GamePage = () => {
   const [messages, setMessages] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [phase, setPhase] = useState('Initializing...');
+  const [roundNumber, setRoundNumber] = useState(1);
   const [loading, setLoading] = useState(false);
   const [userInput, setUserInput] = useState('');
   const [gameOverInfo, setGameOverInfo] = useState(null); // 게임 종료 정보
@@ -33,6 +34,7 @@ const GamePage = () => {
     setMessages([]);
     setCharacters([]);
     setPhase('Initializing...');
+    setRoundNumber(1);
     setGameOverInfo(null);
     setUserInput('');
     setLoading(true);
@@ -80,6 +82,7 @@ const GamePage = () => {
       });
       setMessages(formattedMessages);
       setPhase(data.phase || 'Unknown');
+      setRoundNumber(data.round_number || 1);
 
       // 게임 종료 체크 (Backend에서 game_over 플래그나 phase가 'end'일 때)
       if (data.game_over || data.phase === 'end') {
@@ -163,37 +166,20 @@ const GamePage = () => {
         </div>
       )}
 
-      {/* Left Zone */}
-      <div className="flex-1 flex flex-col min-w-0 border-r border-noir-700">
-        {/* Chat Log */}
-        <div className="flex-[4] relative border-b border-noir-700 bg-noir-900/50">
-          <div className="absolute top-4 left-6 z-10 flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${loading ? 'bg-yellow-500' : 'bg-neon-cyan'} animate-pulse`}></span>
-            <span className="text-xs font-mono text-neon-cyan tracking-wider">
-              SESSION: {threadId.split('-')[1]}
-            </span>
-          </div>
-          <ChatLog messages={messages} />
+      {/* Left Sidebar - Characters */}
+      <div className="w-72 bg-noir-800/50 border-r border-noir-700 flex flex-col flex-shrink-0">
+        <div className="p-4 border-b border-noir-700 bg-noir-900/50">
+          <h2 className="text-lg font-bold text-neon-cyan flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse"></span>
+            PARTICIPANTS
+          </h2>
+          <p className="text-xs text-gray-500 mt-1">
+            SESSION: {threadId.split('-')[1]}
+          </p>
         </div>
 
-        {/* Input */}
-        <div className="p-4 bg-noir-800 border-b border-noir-700">
-          <form onSubmit={handleSendMessage} className="relative">
-            <input
-              type="text"
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-              placeholder="Type your deduction..."
-              className="w-full bg-noir-900 border border-noir-700 rounded p-3 pl-4 pr-12 text-sm focus:border-neon-cyan focus:outline-none"
-              disabled={loading || !!gameOverInfo}
-            />
-            <button type="submit" disabled={loading} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-cyan">↵</button>
-          </form>
-        </div>
-
-        {/* Characters */}
-        <div className="flex-[3] p-6 bg-noir-800/30 overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 h-full content-start">
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+          <div className="space-y-4">
             {characters.map((char, idx) => (
               <CharacterCard
                 key={idx}
@@ -205,10 +191,40 @@ const GamePage = () => {
         </div>
       </div>
 
-      {/* Right Zone */}
-      <div className="w-80 bg-noir-900 flex-shrink-0">
+      {/* Center Zone - Chat & Input */}
+      <div className="flex-1 flex flex-col min-w-0 bg-noir-900/30 relative">
+        {/* Chat Log */}
+        <div className="flex-1 relative overflow-hidden">
+          <ChatLog messages={messages} />
+        </div>
+
+        {/* Input */}
+        <div className="p-4 bg-noir-800/80 border-t border-noir-700 backdrop-blur-sm">
+          <form onSubmit={handleSendMessage} className="relative max-w-4xl mx-auto">
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              placeholder="Type your deduction..."
+              className="w-full bg-noir-900/90 border border-noir-600 rounded-xl p-4 pl-6 pr-14 text-gray-100 placeholder-gray-600 focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan focus:outline-none transition-all shadow-lg"
+              disabled={loading || !!gameOverInfo}
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-neon-cyan transition-colors disabled:opacity-50"
+            >
+              <span className="text-xl">↵</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Right Zone - Game Info */}
+      <div className="w-80 bg-noir-900 flex-shrink-0 border-l border-noir-700">
         <RightPanel
           phase={phase}
+          roundNumber={roundNumber}
           survivorCount={characters.filter(c => c.status === 'alive').length}
           onNextTurn={() => handleAction('next')}
           onDiscuss={() => handleAction('discuss')}

@@ -6,7 +6,7 @@ const CharacterCard = ({ character, onAction }) => {
   const isSuspicious = character.suspicion >= 5;
 
   return (
-    <div className={`relative flex flex-col p-4 rounded-xl border transition-all duration-300 group
+    <div className={`relative flex flex-col p-3 rounded-xl border transition-all duration-300 group
       ${isDead
         ? 'bg-noir-900/50 border-noir-800 opacity-60 grayscale'
         : 'bg-noir-800/80 border-noir-700 hover:border-neon-cyan/50 hover:shadow-glow-cyan'
@@ -22,7 +22,7 @@ const CharacterCard = ({ character, onAction }) => {
             </div>
             <div>
               <h3 className="font-bold text-gray-200 text-sm leading-tight">{character.name}</h3>
-              <p className="text-[10px] text-neon-cyan font-mono">{character.job}</p>
+              <p className="text-[11px] text-neon-cyan font-mono">{character.job}</p>
             </div>
           </div>
         </div>
@@ -31,14 +31,14 @@ const CharacterCard = ({ character, onAction }) => {
 
       {/* Traits */}
       <div className="mb-3">
-        <p className="text-xs text-gray-500 line-clamp-2 min-h-[2.5em]">
+        <p className="text-xs text-gray-500 line-clamp-2 min-h-[1.5em]">
           "{character.personality || character.traits || '정보 없음'}"
         </p>
       </div>
 
       {/* Suspicion Meter */}
       <div className="mt-auto space-y-2">
-        <div className="flex justify-between text-[10px] font-mono text-gray-400">
+        <div className="flex justify-between text-[11px] font-mono text-gray-400">
           <span className="flex items-center gap-1 text-neon-pink">
             ⚠ 의심도
           </span>
@@ -62,7 +62,7 @@ const CharacterCard = ({ character, onAction }) => {
               <span className="text-[9px] text-gray-500 group-hover/btn:text-neon-pink">의심</span>
             </button>
             <button
-              onClick={() => alert("1:1 대화 기능은 현재 개발중입니다.")} // 추후 'chat' 액션으로 연결 가능
+              onClick={() => onAction('start_one_on_one')}
               className="flex flex-col items-center justify-center gap-1 py-1 rounded hover:bg-neon-cyan/10 group/btn transition-colors"
             >
               <MessageSquare className="w-3 h-3 text-gray-500 group-hover/btn:text-neon-cyan" />

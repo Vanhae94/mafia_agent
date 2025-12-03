@@ -155,7 +155,6 @@ def create_game_graph():
             "wait_user": "wait_user",
             "vote": "vote",
             "end": END,
-            "night_phase": "night_phase", # (Legacy)
             "ai_suspicion": "ai_suspicion" # New path for night
         }
     )
@@ -168,7 +167,6 @@ def create_game_graph():
             "user_input": "user_input",
             "vote": "vote",
             "wait_user": "wait_user",
-            "night_phase": "night_phase", # (Legacy)
             "ai_suspicion": "ai_suspicion", # New path for night
             "select_next_speaker": "select_next_speaker",
             "character_speak": "character_speak",

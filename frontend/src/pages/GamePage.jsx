@@ -5,7 +5,7 @@ import CharacterCard from '../components/CharacterCard';
 import RightPanel from '../components/RightPanel';
 import { gameApi } from '../api/gameApi';
 import { generateSessionId } from '../utils/session';
-import { Loader2, RotateCcw, Trophy, Skull } from 'lucide-react';
+import { Loader2, RotateCcw, Trophy, Skull, Search } from 'lucide-react';
 
 const GamePage = () => {
   const navigate = useNavigate();
@@ -15,10 +15,15 @@ const GamePage = () => {
   const [messages, setMessages] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [phase, setPhase] = useState('Initializing...');
-  const [roundNumber, setRoundNumber] = useState(1);
   const [loading, setLoading] = useState(false);
   const [userInput, setUserInput] = useState('');
   const [gameOverInfo, setGameOverInfo] = useState(null); // 게임 종료 정보
+
+  // 추가된 상태
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showClueModal, setShowClueModal] = useState(false);
+  const [roundSummaries, setRoundSummaries] = useState({});
+  const [clues, setClues] = useState([]);
 
   // 1. 컴포넌트 마운트 시 최초 게임 시작
   useEffect(() => {
@@ -34,9 +39,10 @@ const GamePage = () => {
     setMessages([]);
     setCharacters([]);
     setPhase('Initializing...');
-    setRoundNumber(1);
     setGameOverInfo(null);
     setUserInput('');
+    setRoundSummaries({});
+    setClues([]);
     setLoading(true);
 
     try {
@@ -82,7 +88,8 @@ const GamePage = () => {
       });
       setMessages(formattedMessages);
       setPhase(data.phase || 'Unknown');
-      setRoundNumber(data.round_number || 1);
+      setRoundSummaries(data.round_summaries || {});
+      setClues(data.clues || []);
 
       // 게임 종료 체크 (Backend에서 game_over 플래그나 phase가 'end'일 때)
       if (data.game_over || data.phase === 'end') {
@@ -119,6 +126,57 @@ const GamePage = () => {
 
   return (
     <div className="flex h-screen bg-noir-900 text-gray-200 overflow-hidden font-sans relative">
+
+      {/* Modals */}
+      {showSummaryModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowSummaryModal(false)}>
+          <div className="bg-noir-800 border border-neon-cyan/30 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 border-b border-noir-700 pb-2">
+              <h2 className="text-xl font-bold text-neon-cyan flex items-center gap-2">
+                <Trophy className="w-5 h-5" /> 지난 라운드 요약
+              </h2>
+              <button onClick={() => setShowSummaryModal(false)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div className="space-y-4">
+              {Object.keys(roundSummaries).length > 0 ? (
+                Object.entries(roundSummaries).map(([round, summary]) => (
+                  <div key={round} className="bg-noir-900/50 p-4 rounded-lg border border-noir-700">
+                    <h3 className="text-sm font-bold text-gray-400 mb-2">ROUND {round}</h3>
+                    <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{summary}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-8">아직 요약된 라운드가 없습니다.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClueModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowClueModal(false)}>
+          <div className="bg-noir-800 border border-neon-cyan/30 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 border-b border-noir-700 pb-2">
+              <h2 className="text-xl font-bold text-neon-cyan flex items-center gap-2">
+                <Search className="w-5 h-5" /> 발견된 단서
+              </h2>
+              <button onClick={() => setShowClueModal(false)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div className="space-y-3">
+              {clues.length > 0 ? (
+                clues.map((clue, idx) => (
+                  <div key={idx} className="bg-noir-900/50 p-3 rounded-lg border border-noir-700 flex gap-3 items-start">
+                    <span className="text-neon-cyan font-mono text-sm mt-1">#{idx + 1}</span>
+                    <p className="text-sm text-gray-300">{clue}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-8">아직 발견된 단서가 없습니다.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Loading Overlay */}
       {loading && (
@@ -209,11 +267,7 @@ const GamePage = () => {
               className="w-full bg-noir-900/90 border border-noir-600 rounded-xl p-4 pl-6 pr-14 text-gray-100 placeholder-gray-600 focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan focus:outline-none transition-all shadow-lg"
               disabled={loading || !!gameOverInfo}
             />
-            <button
-              type="submit"
-              disabled={loading}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-neon-cyan transition-colors disabled:opacity-50"
-            >
+            <button type="submit" disabled={loading} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-neon-cyan transition-colors disabled:opacity-50">
               <span className="text-xl">↵</span>
             </button>
           </form>
@@ -224,12 +278,14 @@ const GamePage = () => {
       <div className="w-80 bg-noir-900 flex-shrink-0 border-l border-noir-700">
         <RightPanel
           phase={phase}
-          roundNumber={roundNumber}
           survivorCount={characters.filter(c => c.status === 'alive').length}
           onNextTurn={() => handleAction('next')}
+          onNightStart={() => handleAction('night_start')}
           onDiscuss={() => handleAction('discuss')}
           onEndDiscuss={() => handleAction('end_discuss')}
           onContinue={() => handleAction('next')}
+          onShowSummary={() => setShowSummaryModal(true)}
+          onShowClues={() => setShowClueModal(true)}
         />
       </div>
     </div>

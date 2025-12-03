@@ -636,7 +636,7 @@ def summarize_round_node(state: Dict[str, Any]) -> Dict[str, Any]:
     # 메시지 초기화 (요약본만 남기고 리셋)
     # 다음 라운드 시작 시 시스템 메시지로 요약본을 제공하는 방식
     new_messages = [
-        SystemMessage(content=f"=== Round {round_number} 요약 ===\n{summary_text}\n=================="),
+        SystemMessage(content=f"=== Round {round_number-1} 요약 ===\n{summary_text}\n=================="),
         SystemMessage(content=f"Day {round_number} 아침이 밝았습니다.")
     ]
     

@@ -80,8 +80,10 @@ const CharacterCard = ({ character, onAction }) => {
       </div>
 
       {isDead && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[1px] rounded-xl z-10 pointer-events-none">
-          <span className="text-red-700/80 font-black text-2xl rotate-[-15deg] border-4 border-red-700/80 px-2 py-1">OUT</span>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-[2px] rounded-xl z-10 pointer-events-none">
+          <div className="border-4 border-red-600/80 p-2 rotate-[-15deg] shadow-lg shadow-red-900/50">
+            <span className="text-red-600 font-black text-3xl tracking-widest">DEAD</span>
+          </div>
         </div>
       )}
     </div>

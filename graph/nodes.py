@@ -106,7 +106,7 @@ def night_phase_node(state: Dict[str, Any]) -> Dict[str, Any]:
             
             if phantom_char:
                 llm = ChatGoogleGenerativeAI(
-                    model="gemini-2.0-flash",
+                    model="gemini-2.5-flash",
                     google_api_key=os.getenv("GOOGLE_API_KEY")
                 )
                 
@@ -183,7 +183,7 @@ def character_speak_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     # LLM 초기화
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         google_api_key=os.getenv("GOOGLE_API_KEY")
     )
 
@@ -312,7 +312,7 @@ def select_next_speaker_node(state: Dict[str, Any]) -> Dict[str, Any]:
         
     # LLM 초기화
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         google_api_key=os.getenv("GOOGLE_API_KEY")
     )
     
@@ -515,7 +515,7 @@ def ai_suspicion_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     # LLM 초기화
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         google_api_key=os.getenv("GOOGLE_API_KEY")
     )
     
@@ -595,7 +595,7 @@ def summarize_round_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     # LLM 초기화
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         google_api_key=os.getenv("GOOGLE_API_KEY")
     )
     

@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: phantom_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the current directory to /app for hot-reloading (optional)
+      # Note: uvicorn needs --reload flag for this to work, but we kept CMD simple
+      - .:/app
+    env_file:
+      - .env
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: phantom_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
